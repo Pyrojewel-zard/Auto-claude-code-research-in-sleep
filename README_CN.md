@@ -298,10 +298,17 @@ NARRATIVE_REPORT.md ──► /paper-plan ──► /paper-figure ──► /pap
 | 🔄 [`auto-paper-improvement-loop`](skills/auto-paper-improvement-loop/SKILL.md) | 2 轮内容审稿 + 格式检查循环（4/10 → 8.5/10） | 是 |
 | 📝 [`paper-writing`](skills/paper-writing/SKILL.md) | **工作流 3 全流程**：paper-plan → paper-figure → paper-write → paper-compile → auto-paper-improvement-loop | 是 |
 | 📱 [`feishu-notify`](skills/feishu-notify/SKILL.md) | [飞书](#-飞书lark-集成可选)通知——推送（webhook）或双向交互。默认关闭 | 否 |
-| | | |
-| **社区 Skills** | *社区贡献的领域专用 skills* | |
-| 🏗️ [`dse-loop`](skills/dse-loop/SKILL.md) | 自动设计空间探索——迭代运行、分析、调参。原为体系结构/EDA 设计（gem5、Yosys），但适用于任何有可调参数的领域（计算化学、CFD、生信等） | 否 |
-| 🤖 [`idea-discovery-robot`](skills/idea-discovery-robot/SKILL.md) | 面向机器人 / 具身智能 的工作流 1 适配版：按 embodiment、benchmark、sim2real 路径和真实机器人安全约束来生成、筛选、验证 idea | 是 |
+
+---
+
+### 🧩 社区 Skills & 扩展
+
+社区贡献的领域专用 skills 和外部项目。欢迎 PR——添加 `skills/your-skill/SKILL.md` 即可！
+
+| 类型 | 名称 | 领域 | 描述 | Codex MCP？ |
+|------|------|------|------|-----------|
+| Skill | 🏗️ [`dse-loop`](skills/dse-loop/SKILL.md) | 体系结构 / EDA | 自动设计空间探索——迭代运行、分析、调参（gem5、Yosys 等）。适用于任何有可调参数的领域 | 否 |
+| Skill | 🤖 [`idea-discovery-robot`](skills/idea-discovery-robot/SKILL.md) | 机器人 / 具身智能 | 工作流 1 适配版——按 embodiment、benchmark、sim2real 路径和安全约束生成、筛选 idea | 是 |
 
 ---
 
