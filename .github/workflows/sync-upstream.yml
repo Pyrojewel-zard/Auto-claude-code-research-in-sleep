@@ -1,0 +1,65 @@
+name: Sync Upstream
+
+on:
+  schedule:
+    - cron: '0 2 * * *'  # UTC 02:00 daily (Beijing time 10:00)
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: 'Only check for updates, do not create PR'
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.PAT_UPSTREAM_SYNC }}
+
+      - name: Add upstream remote
+        run: |
+          git remote add upstream https://github.com/wanshuiyin/Auto-claude-code-research-in-sleep.git
+          git fetch upstream
+
+      - name: Check for upstream changes
+        id: check
+        run: |
+          MERGE_BASE=$(git merge-base main upstream/main)
+          UPSTREAM_HEAD=$(git rev-parse upstream/main)
+          if [ "$MERGE_BASE" = "$UPSTREAM_HEAD" ]; then
+            echo "has_updates=false" >> "$GITHUB_OUTPUT"
+            echo "Upstream is already up to date."
+          else
+            echo "has_updates=true" >> "$GITHUB_OUTPUT"
+            NEW_COMMITS=$(git log --oneline "${MERGE_BASE}..upstream/main" | wc -l)
+            echo "new_commits=${NEW_COMMITS}" >> "$GITHUB_OUTPUT"
+            echo "Found ${NEW_COMMITS} new commit(s) from upstream."
+          fi
+
+      - name: Create sync branch and PR
+        if: steps.check.outputs.has_updates == 'true' && github.event.inputs.dry_run != 'true'
+        run: |
+          NEW_COMMITS=${{ steps.check.outputs.new_commits }}
+          BRANCH="sync-upstream-$(date +%Y%m%d-%H%M%S)"
+          git checkout -b "$BRANCH" upstream/main
+          git push origin "$BRANCH"
+
+          gh pr create \
+            --base main \
+            --head "$BRANCH" \
+            --title "Sync: upstream ${NEW_COMMITS} new commit(s)" \
+            --body "Auto-synced from upstream \`wanshuiyin/Auto-claude-code-research-in-sleep\`.\n\n${NEW_COMMITS} new commit(s) since last sync.\n\n<details>\n<summary>Upstream commits</summary>\n\n\$(git log --oneline --no-merges \$(git merge-base main upstream/main)..upstream/main)\n\n</details>"
+        env:
+          GH_TOKEN: ${{ secrets.PAT_UPSTREAM_SYNC }}
+
+      - name: Summary
+        if: steps.check.outputs.has_updates == 'false'
+        run: echo "No action needed — fork is up to date with upstream."
