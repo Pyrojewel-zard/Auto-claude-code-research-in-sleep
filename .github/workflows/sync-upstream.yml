@@ -105,7 +105,7 @@ jobs:
       - name: Push sync branch
         if: steps.check.outputs.has_updates == 'true' && fromJSON(github.event.inputs.dry_run || 'false') != true && steps.existing_pr.outputs.has_open_sync_pr == 'false'
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ secrets.PAT_UPSTREAM_SYNC }}
         shell: bash
         run: |
           set -euo pipefail
@@ -115,7 +115,7 @@ jobs:
       - name: Create pull request
         if: steps.check.outputs.has_updates == 'true' && fromJSON(github.event.inputs.dry_run || 'false') != true && steps.existing_pr.outputs.has_open_sync_pr == 'false'
         env:
-          GH_TOKEN: ${{ github.token }}
+          GH_TOKEN: ${{ secrets.PAT_UPSTREAM_SYNC }}
         shell: bash
         run: |
           set -euo pipefail
