@@ -126,27 +126,28 @@ jobs:
           COMMITS=$(git log --oneline --no-merges \
             "${{ steps.check.outputs.merge_base }}..upstream/main")
 
-          BODY=$(cat <<EOF
-Auto-synced from upstream \`wanshuiyin/Auto-claude-code-research-in-sleep\`.
+          BODY_FILE=$(mktemp)
+          cat << 'BODYEOF' > "$BODY_FILE"
+Auto-synced from upstream `wanshuiyin/Auto-claude-code-research-in-sleep`.
 
-${NEW_COMMITS} new commit(s) since last sync.
-
-<details>
-<summary>Upstream commits</summary>
-
-\`\`\`
-${COMMITS}
-\`\`\`
-
-</details>
-EOF
-)
+BODYEOF
+          echo "${{ steps.check.outputs.new_commits }} new commit(s) since last sync." >> "$BODY_FILE"
+          echo "" >> "$BODY_FILE"
+          echo '<details>' >> "$BODY_FILE"
+          echo '<summary>Upstream commits</summary>' >> "$BODY_FILE"
+          echo "" >> "$BODY_FILE"
+          echo '```' >> "$BODY_FILE"
+          echo "$COMMITS" >> "$BODY_FILE"
+          echo '```' >> "$BODY_FILE"
+          echo "" >> "$BODY_FILE"
+          echo '</details>' >> "$BODY_FILE"
 
           gh pr create \
             --base main \
             --head "$BRANCH" \
-            --title "Sync: upstream ${NEW_COMMITS} new commit(s)" \
-            --body "$BODY"
+            --title "Sync: upstream ${{ steps.check.outputs.new_commits }} new commit(s)" \
+            --body "$(cat "$BODY_FILE")"
+          rm -f "$BODY_FILE"
 
       - name: Summary
         shell: bash
