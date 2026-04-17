@@ -127,10 +127,8 @@ jobs:
             "${{ steps.check.outputs.merge_base }}..upstream/main")
 
           BODY_FILE=$(mktemp)
-          cat << 'BODYEOF' > "$BODY_FILE"
-Auto-synced from upstream `wanshuiyin/Auto-claude-code-research-in-sleep`.
-
-BODYEOF
+          echo "Auto-synced from upstream \`wanshuiyin/Auto-claude-code-research-in-sleep\`." > "$BODY_FILE"
+          echo "" >> "$BODY_FILE"
           echo "${{ steps.check.outputs.new_commits }} new commit(s) since last sync." >> "$BODY_FILE"
           echo "" >> "$BODY_FILE"
           echo '<details>' >> "$BODY_FILE"
