@@ -17,49 +17,147 @@ permissions:
 jobs:
   sync:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          token: ${{ secrets.PAT_UPSTREAM_SYNC }}
+          persist-credentials: false
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
       - name: Add upstream remote
         run: |
           git remote add upstream https://github.com/wanshuiyin/Auto-claude-code-research-in-sleep.git
-          git fetch upstream
+          git fetch upstream main
 
       - name: Check for upstream changes
         id: check
+        shell: bash
         run: |
+          set -euo pipefail
+
           MERGE_BASE=$(git merge-base main upstream/main)
           UPSTREAM_HEAD=$(git rev-parse upstream/main)
+
+          echo "merge_base=$MERGE_BASE" >> "$GITHUB_OUTPUT"
+          echo "upstream_head=$UPSTREAM_HEAD" >> "$GITHUB_OUTPUT"
+
           if [ "$MERGE_BASE" = "$UPSTREAM_HEAD" ]; then
             echo "has_updates=false" >> "$GITHUB_OUTPUT"
+            echo "new_commits=0" >> "$GITHUB_OUTPUT"
             echo "Upstream is already up to date."
           else
+            NEW_COMMITS=$(git rev-list --count "${MERGE_BASE}..upstream/main")
             echo "has_updates=true" >> "$GITHUB_OUTPUT"
-            NEW_COMMITS=$(git log --oneline "${MERGE_BASE}..upstream/main" | wc -l)
-            echo "new_commits=${NEW_COMMITS}" >> "$GITHUB_OUTPUT"
+            echo "new_commits=$NEW_COMMITS" >> "$GITHUB_OUTPUT"
             echo "Found ${NEW_COMMITS} new commit(s) from upstream."
           fi
 
-      - name: Create sync branch and PR
-        if: steps.check.outputs.has_updates == 'true' && github.event.inputs.dry_run != 'true'
+      - name: Show upstream commits in dry run
+        if: steps.check.outputs.has_updates == 'true' && github.event.inputs.dry_run == 'true'
+        shell: bash
         run: |
-          NEW_COMMITS=${{ steps.check.outputs.new_commits }}
+          set -euo pipefail
+          echo "Dry run only. Upstream commits:"
+          git log --oneline --no-merges \
+            "${{ steps.check.outputs.merge_base }}..upstream/main"
+
+      - name: Check existing open sync PR
+        if: steps.check.outputs.has_updates == 'true' && github.event.inputs.dry_run != 'true'
+        id: existing_pr
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          COUNT=$(gh pr list \
+            --state open \
+            --base main \
+            --search "in:title Sync: upstream" \
+            --json number \
+            --jq 'length')
+
+          if [ "$COUNT" -gt 0 ]; then
+            echo "has_open_sync_pr=true" >> "$GITHUB_OUTPUT"
+            echo "There is already an open sync PR. Skipping new PR creation."
+          else
+            echo "has_open_sync_pr=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Create sync branch
+        if: steps.check.outputs.has_updates == 'true' && github.event.inputs.dry_run != 'true' && steps.existing_pr.outputs.has_open_sync_pr == 'false'
+        id: branch
+        shell: bash
+        run: |
+          set -euo pipefail
+
           BRANCH="sync-upstream-$(date +%Y%m%d-%H%M%S)"
           git checkout -b "$BRANCH" upstream/main
-          git push origin "$BRANCH"
+
+          echo "branch=$BRANCH" >> "$GITHUB_OUTPUT"
+
+      - name: Push sync branch
+        if: steps.check.outputs.has_updates == 'true' && github.event.inputs.dry_run != 'true' && steps.existing_pr.outputs.has_open_sync_pr == 'false'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          git push "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" \
+            "${{ steps.branch.outputs.branch }}"
+
+      - name: Create pull request
+        if: steps.check.outputs.has_updates == 'true' && github.event.inputs.dry_run != 'true' && steps.existing_pr.outputs.has_open_sync_pr == 'false'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          NEW_COMMITS="${{ steps.check.outputs.new_commits }}"
+          BRANCH="${{ steps.branch.outputs.branch }}"
+
+          COMMITS=$(git log --oneline --no-merges \
+            "${{ steps.check.outputs.merge_base }}..upstream/main")
+
+          BODY=$(cat <<EOF
+Auto-synced from upstream \`wanshuiyin/Auto-claude-code-research-in-sleep\`.
+
+${NEW_COMMITS} new commit(s) since last sync.
+
+<details>
+<summary>Upstream commits</summary>
+
+\`\`\`
+${COMMITS}
+\`\`\`
+
+</details>
+EOF
+)
 
           gh pr create \
             --base main \
             --head "$BRANCH" \
             --title "Sync: upstream ${NEW_COMMITS} new commit(s)" \
-            --body "Auto-synced from upstream \`wanshuiyin/Auto-claude-code-research-in-sleep\`.\n\n${NEW_COMMITS} new commit(s) since last sync.\n\n<details>\n<summary>Upstream commits</summary>\n\n\$(git log --oneline --no-merges \$(git merge-base main upstream/main)..upstream/main)\n\n</details>"
-        env:
-          GH_TOKEN: ${{ secrets.PAT_UPSTREAM_SYNC }}
+            --body "$BODY"
 
       - name: Summary
-        if: steps.check.outputs.has_updates == 'false'
-        run: echo "No action needed — fork is up to date with upstream."
+        shell: bash
+        run: |
+          if [ "${{ steps.check.outputs.has_updates }}" = "false" ]; then
+            echo "No action needed — fork is up to date with upstream."
+          elif [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
+            echo "Dry run completed — updates exist but no PR was created."
+          elif [ "${{ steps.existing_pr.outputs.has_open_sync_pr }}" = "true" ]; then
+            echo "Updates exist, but an open sync PR already exists."
+          else
+            echo "Sync PR created successfully."
+          fi
