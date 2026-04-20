@@ -43,7 +43,7 @@ research-pipeline
 
 **与 `research-pipeline` 的关系**：
 - `research-pipeline` 已通过 `research-lit` 调用文献检索，无需修改
-- 用户可通过 `research-lit "topic" — sources: ieee` 启用 IEEE 优先模式
+- 用户可通过 `research-lit "topic" --sources: ieee` 启用 IEEE 优先模式
 - 未来可在 `research-pipeline` 中新增 `LIT_SOURCE_PRIORITY` 常量控制默认行为
 
 ---
@@ -268,8 +268,8 @@ publication_title:("IEEE Transactions on Microwave Theory and Techniques" OR "IE
 
 ### 依赖
 
-- `ieee-paper-fullcontent`（现有）
-- `ieee-paper-detail`（现有）
+- `ieee-paper-fullcontent`（新建）
+- `ieee-paper-detail`（新建）
 - `arxiv`（现有，用于 arXiv 论文保留链接/DOI）
 - `research-wiki`（现有，ARIS wiki 流程）
 - `wiki-ingest`（可选，Obsidian wiki 流程）
@@ -352,14 +352,14 @@ research-lit (当前):
     4. Web (arXiv/S2/DeepXiv/Exa) → 外部检索
 ```
 
-通过新增 `— sources: ieee` 参数启用 IEEE 优先流程，复用现有 `— sources:` 机制。
+通过新增 `--sources: ieee` 参数启用 IEEE 优先流程，复用现有 `--sources:` 机制。
 
 ### 新增逻辑（IEEE 优先，通过参数启用）
 
-当用户指定 `— sources: ieee` 时：
+当用户指定 `--sources: ieee` 时：
 
 ```
-research-lit — sources: ieee:
+research-lit --sources: ieee:
     1. ieee-lit-search(query, venues, year_range) → IEEE 论文
     2. arxiv(query) → arXiv 预印本补充
     3. 按 DOI 去重合并
@@ -367,13 +367,13 @@ research-lit — sources: ieee:
     5. 返回 LIT_REVIEW.md 路径
 ```
 
-### 与现有 `— sources:` 机制的关系
+### 与现有 `--sources:` 机制的关系
 
 | 参数 | 行为 |
 |------|------|
-| `— sources: all` | 默认行为：Zotero → Obsidian → Local → Web |
-| `— sources: ieee` | IEEE 优先：ieee-lit-search → arxiv → lit-reading |
-| `— sources: ieee, zotero` | IEEE + Zotero（合并去重）|
+| `--sources: all` | 默认行为：Zotero → Obsidian → Local → Web |
+| `--sources: ieee` | IEEE 优先：ieee-lit-search → arxiv → lit-reading |
+| `--sources: ieee, zotero` | IEEE + Zotero（合并去重）|
 
 ### 新增参数
 
@@ -385,8 +385,8 @@ research-lit — sources: ieee:
 
 ### 输出变化
 
-- 默认（`— sources: all`）：返回论文元数据列表（保持不变）
-- IEEE 模式（`— sources: ieee`）：返回 `LIT_REVIEW.md` 路径 + 论文列表
+- 默认（`--sources: all`）：返回论文元数据列表（保持不变）
+- IEEE 模式（`--sources: ieee`）：返回 `LIT_REVIEW.md` 路径 + 论文列表
 
 ---
 
