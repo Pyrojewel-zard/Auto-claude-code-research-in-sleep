@@ -22,11 +22,11 @@ research-pipeline
     └── research-lit (修改)
             ├── ieee-lit-search (新建) ──→ IEEE 论文列表
             │       ├── ieee-keyword-gen (内嵌逻辑)
-            │       └── ieee-advanced-search (现有)
+            │       └── ieee-advanced-search (新建)
             ├── arxiv (现有) ──→ arXiv 补充论文
             └── lit-reading (新建) ──→ 分级阅读 + 双写
-                    ├── ieee-paper-fullcontent (现有)
-                    ├── ieee-paper-detail (现有)
+                    ├── ieee-paper-fullcontent (新建)
+                    ├── ieee-paper-detail (新建)
                     └── deep-reader subagent (新建)
 ```
 
@@ -37,13 +37,13 @@ research-pipeline
 4. 输出到 `idea-stage/LIT_REVIEW.md` + wiki 入库
 
 **修改范围**：
-- 新建 2 个 skill：`ieee-lit-search`、`lit-reading`
+- 新建 5 个 skill：`ieee-lit-search`、`lit-reading`、`ieee-advanced-search`、`ieee-paper-fullcontent`、`ieee-paper-detail`
 - 修改 1 个 skill：`research-lit`（新增参数，不改变默认行为）
 - 新建 1 个 subagent：`deep-reader`（精读 agent）
 
 **与 `research-pipeline` 的关系**：
 - `research-pipeline` 已通过 `research-lit` 调用文献检索，无需修改
-- 用户可通过 `research-lit --source-priority ieee` 启用 IEEE 优先模式
+- 用户可通过 `research-lit "topic" — sources: ieee` 启用 IEEE 优先模式
 - 未来可在 `research-pipeline` 中新增 `LIT_SOURCE_PRIORITY` 常量控制默认行为
 
 ---
@@ -392,10 +392,13 @@ research-lit — sources: ieee:
 
 ## 实现优先级
 
-1. **P0**: `ieee-lit-search` — 核心检索编排
-2. **P0**: `lit-reading` — 分级阅读编排
-3. **P1**: `deep-reader` subagent — 精读 agent
-4. **P1**: `research-lit` 修改 — 整合调用
+1. **P0**: `ieee-advanced-search` — IEEE 检索基础 skill
+2. **P0**: `ieee-paper-fullcontent` — IEEE 全文提取 skill
+3. **P0**: `ieee-paper-detail` — IEEE 元数据提取 skill
+4. **P0**: `ieee-lit-search` — 核心检索编排
+5. **P0**: `lit-reading` — 分级阅读编排
+6. **P1**: `deep-reader` subagent — 精读 agent
+7. **P1**: `research-lit` 修改 — 整合调用
 
 ---
 
@@ -404,7 +407,7 @@ research-lit — sources: ieee:
 | 风险 | 缓解措施 |
 |------|----------|
 | IEEE 无访问权限 | 停止并询问用户：配置 VPN/代理？跳过 IEEE？ |
-| IEEE API 限流 | 多轮检索间加入延迟，缓存结果 |
+| IEEE Xplore 访问限流 | 多轮检索间加入延迟，缓存结果，检测 429 响应 |
 | 付费墙全文 | 标记 `paywalled: true`，保留 abstract + DOI |
 | 零 IEEE 结果 | 返回空列表，继续 arXiv 补充 |
 | 精读 subagent 超时 | 设置 5 分钟超时，失败时降级为粗读 |
