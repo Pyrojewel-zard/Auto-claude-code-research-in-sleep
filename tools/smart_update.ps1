@@ -6,12 +6,18 @@
 # Usage:
 #   Global (default):
 #     .\tools\smart_update.ps1 [-Apply]
-#   Project-level:
+#   Project-level (Claude Code):
 #     .\tools\smart_update.ps1 -ProjectPath <path> [-Apply]
+#   Project-level (Codex CLI):
+#     .\tools\smart_update.ps1 -ProjectPath <path> -TargetSubdir '.agents/skills/aris' [-Apply]
+#   Custom paths:
 #     .\tools\smart_update.ps1 -UpstreamPath <path> -LocalPath <path> [-Apply]
 #
 #   -Apply: actually perform the updates (default: dry-run analysis only)
-#   -ProjectPath: project root — upstream is always the repo's skills/; local targets <ProjectPath>/.claude/skills
+#   -ProjectPath: project root — upstream is always the repo's skills/; local targets <ProjectPath>/<TargetSubdir>
+#   -TargetSubdir: project-mode skill subdirectory (default: .claude/skills)
+#                  common: .claude/skills, .claude/skills/aris, .agents/skills, .agents/skills/aris
+#                  must be a relative path
 #   -UpstreamPath: explicit upstream skills directory
 #   -LocalPath: explicit local skills directory
 
@@ -21,6 +27,9 @@ param(
 
     [Parameter(ParameterSetName = 'Project', Mandatory = $true)]
     [string]$ProjectPath,
+
+    [Parameter(ParameterSetName = 'Project', Mandatory = $false)]
+    [string]$TargetSubdir = '.claude/skills',
 
     [Parameter(ParameterSetName = 'Explicit', Mandatory = $true)]
     [string]$UpstreamPath,
@@ -33,6 +42,12 @@ $ErrorActionPreference = 'Stop'
 
 # ─── Resolve upstream & local paths ───────────────────────────────────────────
 if ($PSCmdlet.ParameterSetName -eq 'Project') {
+    if ([System.IO.Path]::IsPathRooted($TargetSubdir)) {
+        Write-Host "Error: -TargetSubdir must be a relative path (got: $TargetSubdir)" -ForegroundColor Red
+        Write-Host "Hint: use -LocalPath for absolute paths" -ForegroundColor Yellow
+        exit 1
+    }
+
     $ProjectRoot = if ([System.IO.Path]::IsPathRooted($ProjectPath)) {
         $ProjectPath
     } else {
@@ -49,9 +64,41 @@ if ($PSCmdlet.ParameterSetName -eq 'Project') {
         $resolved = Join-Path $PSScriptRoot '..\skills' | Resolve-Path -ErrorAction SilentlyContinue
         if ($resolved) { $UpstreamDir = $resolved.Path }
     }
-    # Local targets the project's .claude/skills
-    $LocalDir = Join-Path $ProjectRoot '.claude\skills'
-    $Scope = "Project: $ProjectRoot"
+    $TargetSubdirNormalized = $TargetSubdir -replace '/', '\'
+    $LocalDir = Join-Path $ProjectRoot $TargetSubdirNormalized
+    $Scope = "Project: $ProjectRoot (subdir: $TargetSubdir)"
+
+    # ─── Deprecate nested -TargetSubdir (.claude/skills/aris, .agents/skills/aris) ──
+    if ($TargetSubdir -in @('.claude/skills/aris', '.agents/skills/aris')) {
+        Write-Host ""
+        Write-Host "⚠️  -TargetSubdir $TargetSubdir is DEPRECATED" -ForegroundColor Yellow
+        Write-Host ""
+        Write-Host "  Reason: nested 'aris/' subdirectory hides skills from Claude Code's slash-command discovery" -ForegroundColor Yellow
+        Write-Host "          (CC only scans .claude/skills/ one level deep)." -ForegroundColor Yellow
+        Write-Host ""
+        Write-Host "  Switch to the flat install (use the bash version via WSL, or manual junctions —" -ForegroundColor Yellow
+        Write-Host "  see install_aris.ps1 docstring for the manual one-liner)." -ForegroundColor Yellow
+        Write-Host ""
+        if ($Apply) {
+            Write-Host "Refusing to -Apply with deprecated nested target." -ForegroundColor Red
+            exit 2
+        }
+        Write-Host "(continuing dry-run analysis for backward compatibility — no changes will be made)" -ForegroundColor Yellow
+    }
+
+    # Platform marker auto-detect: warn on mismatch
+    $hasClaudeMarkers = (Test-Path (Join-Path $ProjectRoot 'CLAUDE.md')) -or `
+                       (Test-Path (Join-Path $ProjectRoot '.claude\skills')) -or `
+                       (Test-Path (Join-Path $ProjectRoot '.claude\settings.json'))
+    $hasCodexMarkers  = (Test-Path (Join-Path $ProjectRoot 'AGENTS.md')) -or `
+                       (Test-Path (Join-Path $ProjectRoot '.agents\skills')) -or `
+                       (Test-Path (Join-Path $ProjectRoot '.codex\config.toml'))
+    if ($hasClaudeMarkers -and (-not $hasCodexMarkers) -and $TargetSubdir.StartsWith('.agents')) {
+        Write-Host "⚠️  Warning: project has Claude markers but -TargetSubdir points to Codex path ($TargetSubdir)" -ForegroundColor Yellow
+    }
+    if ($hasCodexMarkers -and (-not $hasClaudeMarkers) -and $TargetSubdir.StartsWith('.claude')) {
+        Write-Host "⚠️  Warning: project has Codex markers but -TargetSubdir points to Claude path ($TargetSubdir)" -ForegroundColor Yellow
+    }
 
 } elseif ($PSCmdlet.ParameterSetName -eq 'Explicit') {
     $UpstreamDir = $UpstreamPath
@@ -66,6 +113,24 @@ if ($PSCmdlet.ParameterSetName -eq 'Project') {
     }
     $LocalDir = Join-Path $env:USERPROFILE '.claude\skills'
     $Scope = 'Global'
+}
+
+# ─── Refuse to operate on symlinked installs ──────────────────────────────────
+if (Test-Path $LocalDir) {
+    $item = Get-Item $LocalDir -Force -ErrorAction SilentlyContinue
+    if ($item -and ($item.LinkType -in @('Junction', 'SymbolicLink'))) {
+        Write-Host ""
+        Write-Host "✗ Local skill directory is a symlink/junction: $LocalDir" -ForegroundColor Red
+        Write-Host "  → $($item.Target)"
+        Write-Host ""
+        Write-Host "smart_update is for COPIED installs. Symlinked installs are updated by:"
+        Write-Host "  cd <aris-repo>; git pull"
+        Write-Host ""
+        Write-Host "If you need per-project customization, switch to a copied install:"
+        Write-Host "  Remove-Item $LocalDir -Force"
+        Write-Host "  .\tools\smart_update.ps1 -ProjectPath <project> -TargetSubdir $TargetSubdir -Apply"
+        exit 2
+    }
 }
 
 # ─── Personal info patterns ───────────────────────────────────────────────────
