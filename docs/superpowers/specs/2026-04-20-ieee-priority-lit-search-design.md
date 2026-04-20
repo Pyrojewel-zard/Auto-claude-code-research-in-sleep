@@ -38,8 +38,13 @@ research-pipeline
 
 **修改范围**：
 - 新建 2 个 skill：`ieee-lit-search`、`lit-reading`
-- 修改 1 个 skill：`research-lit`（调整调用顺序）
+- 修改 1 个 skill：`research-lit`（新增参数，不改变默认行为）
 - 新建 1 个 subagent：`deep-reader`（精读 agent）
+
+**与 `research-pipeline` 的关系**：
+- `research-pipeline` 已通过 `research-lit` 调用文献检索，无需修改
+- 用户可通过 `research-lit --source-priority ieee` 启用 IEEE 优先模式
+- 未来可在 `research-pipeline` 中新增 `LIT_SOURCE_PRIORITY` 常量控制默认行为
 
 ---
 
@@ -88,10 +93,14 @@ IEEE 优先的多轮检索编排
 | 天线/电磁 | IEEE TAP, IEEE AWPL, APS |
 | 通信 | IEEE TCOM, IEEE TWC, IEEE JSAC, ICC, Globecom |
 
+**白名单使用方式**：通过 `ieee-advanced-search` 的 Publication Title 过滤，构造布尔查询：
+```
+("Publication Title":IEEE Transactions on Microwave Theory and Techniques OR "Publication Title":IEEE Microwave and Wireless Components Letters OR ...)
+```
+
 ### 依赖
 
-- `ieee-advanced-search`（现有）
-- `ieee-parse-results`（现有）
+- `ieee-advanced-search`（现有，内部已处理结果解析）
 
 ---
 
@@ -106,6 +115,7 @@ IEEE 优先的多轮检索编排
 | 参数 | 类型 | 默认值 | 说明 |
 |------|------|--------|------|
 | `papers` | list | 必填 | 论文元数据列表 |
+| `shallow_read_max` | int | 20 | 粗读最大数量（超过的只读 abstract）|
 | `deep_read_top` | int | 5 | 精读数量 |
 | `output_dir` | string | `idea-stage/` | 输出目录 |
 
@@ -120,7 +130,8 @@ IEEE 优先的多轮检索编排
            mark as candidate
 
 2. 粗读层
-   for each candidate:
+   candidates_limited = candidates[:shallow_read_max]
+   for each candidate in candidates_limited:
        fullcontent = ieee-paper-fullcontent(arnumber) 或 arxiv-fulltext(doi)
        structured_summary = LLM 提取:
            - 研究问题
@@ -128,12 +139,20 @@ IEEE 优先的多轮检索编排
            - 关键结果（数字）
            - 局限性
        save to candidate_summaries[]
+   # 超过 shallow_read_max 的候选只保留 abstract
 
 3. 精读层
    top_papers = select top-N by relevance + citations
    for each top_paper:
+       # Step 1: 获取全文
+       fullcontent = ieee-paper-fullcontent(arnumber)
+       # Step 2: 获取完整元数据
        detail = ieee-paper-detail(arnumber)
-       deep_summary = dispatch deep-reader subagent(paper)
+       # Step 3: Dispatch 精读 subagent
+       deep_summary = dispatch deep-reader subagent(
+           paper_metadata=detail,
+           fullcontent=fullcontent
+       )
        save to deep_summaries[]
 
 4. 双写输出
@@ -145,7 +164,10 @@ IEEE 优先的多轮检索编排
 
    b. 入库 wiki:
       for each deep_summary:
-          wiki-ingest(deep_summary) → wiki/sources/lit-review/
+          # Step 1: 先写入 raw
+          raw_path = write to raw/notes/papers/{date}-{slug}.md
+          # Step 2: 调用 wiki-ingest
+          wiki-ingest(raw_path) → wiki/sources/lit-review/
 ```
 
 ### 依赖
@@ -215,7 +237,11 @@ IEEE 优先的多轮检索编排
 
 ## 修改 Skill: `research-lit`
 
-### 当前逻辑（arXiv 优先）
+### 设计决策：非破坏性修改
+
+**不修改 `research-lit` 的默认行为**，保持 arXiv 优先。通过新增参数 `--source-priority: ieee` 启用 IEEE 优先流程。
+
+### 当前逻辑（arXiv 优先，保持不变）
 
 ```
 research-lit:
@@ -225,10 +251,12 @@ research-lit:
     4. 返回论文列表
 ```
 
-### 修改后逻辑（IEEE 优先）
+### 新增逻辑（IEEE 优先，通过参数启用）
+
+当用户指定 `--source-priority: ieee` 时：
 
 ```
-research-lit:
+research-lit --source-priority ieee:
     1. ieee-lit-search(query, venues, year_range) → IEEE 论文
     2. arxiv(query) → arXiv 预印本补充
     3. 按 DOI 去重合并
@@ -240,15 +268,15 @@ research-lit:
 
 | 参数 | 默认值 | 说明 |
 |------|--------|------|
-| `source_priority` | `ieee` | 可选 `arxiv` 保持旧行为 |
+| `source_priority` | `arxiv` | 可选 `ieee` 启用 IEEE 优先流程 |
 | `venues` | 核心期刊白名单 | 传递给 ieee-lit-search |
 | `year_range` | 近 5 年 | 传递给 ieee-lit-search |
 | `deep_read_top` | 5 | 传递给 lit-reading |
 
 ### 输出变化
 
-- 旧：返回论文元数据列表
-- 新：返回 `LIT_REVIEW.md` 路径 + 论文列表
+- 默认（arXiv 优先）：返回论文元数据列表（保持不变）
+- IEEE 优先模式：返回 `LIT_REVIEW.md` 路径 + 论文列表
 
 ---
 
