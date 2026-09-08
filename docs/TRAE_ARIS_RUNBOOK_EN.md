@@ -20,7 +20,7 @@ It is recommended to create a dedicated Trae agent for ARIS workflows to avoid c
 ### 2.1 Clone the repository and configure Skills
 
 ```powershell
-git clone https://github.com/wanshuiyin/Auto-claude-code-research-in-sleep.git
+git clone https://github.com/Pyrojewel-zard/Auto-claude-code-research-in-sleep.git
 ```
 
 **Two ways to install Skills in Trae:**

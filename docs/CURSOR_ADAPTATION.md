@@ -18,7 +18,7 @@
 ### 2.1 Clone the repo
 
 ```bash
-git clone https://github.com/wanshuiyin/Auto-claude-code-research-in-sleep.git
+git clone https://github.com/Pyrojewel-zard/Auto-claude-code-research-in-sleep.git
 ```
 
 > **Important:** Open this repo (or add it as a workspace folder) in Cursor. The `@skills/...` references throughout this guide use Cursor's `@`-file feature, which only resolves files within your open workspace. If you work in a separate project, either copy the `skills/` folder into it or add the ARIS repo as a second workspace folder (File → Add Folder to Workspace).

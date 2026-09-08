@@ -112,7 +112,7 @@ Use the project-local symlink install from [§ Install Skills above](#install-sk
 <summary><b>Show global-copy fallback install commands and the non-Claude executor verification prompt</b></summary>
 
 ```bash
-git clone https://github.com/wanshuiyin/Auto-claude-code-research-in-sleep.git
+git clone https://github.com/Pyrojewel-zard/Auto-claude-code-research-in-sleep.git
 cd Auto-claude-code-research-in-sleep
 cp -r skills/* ~/.claude/skills/
 claude

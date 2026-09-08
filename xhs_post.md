@@ -115,7 +115,7 @@ AI帮你加速，但最终决策权在你 🧠
 —
 
 🔗 GitHub：
-github.com/wanshuiyin/Auto-claude-code-research-in-sleep
+github.com/Pyrojewel-zard/Auto-claude-code-research-in-sleep
 
 MIT开源，fork随便改 ⭐
 Skills就是Markdown文件，零门槛定制

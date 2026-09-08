@@ -75,7 +75,7 @@ OpenRouter 应作为 `/auto-review-loop-llm` 的 opt-in 审稿后端。依赖跨
 ### Step 1：克隆 ARIS
 
 ```bash
-git clone https://github.com/wanshuiyin/Auto-claude-code-research-in-sleep.git /path/to/aris_repo
+git clone https://github.com/Pyrojewel-zard/Auto-claude-code-research-in-sleep.git /path/to/aris_repo
 cd /path/to/aris_repo
 ```
 

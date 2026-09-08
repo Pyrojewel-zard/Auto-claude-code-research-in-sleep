@@ -100,7 +100,7 @@ When `GAP_REPORT.md` is present and a section slot is classified as `status: mis
 
 **Carve-out from "no placeholder" rule.** The default `/paper-write` discipline (no placeholders such as "see supplementary" or "TBD") still applies for everything **except** GAP_REPORT-listed missing slots. The marker is the principled way to surface genuine evidence deficits without compromising claim integrity.
 
-Original idea: @zhangpelf in [#217](https://github.com/wanshuiyin/Auto-claude-code-research-in-sleep/issues/217).
+Original idea: @zhangpelf in [#217](https://github.com/Pyrojewel-zard/Auto-claude-code-research-in-sleep/issues/217).
 
 ## Templates
 

@@ -36,6 +36,9 @@ Grant proposals argue for **future work** (feasibility + potential), not complet
 - **OUTPUT_FORMAT = `markdown`** — Output format. Supported: `markdown`, `latex`. LaTeX uses grant-specific templates when available.
 - **MAX_REVIEW_ROUNDS = 2** — Maximum external review-revise cycles before finalizing.
 - **OUTPUT_DIR = `grant-proposal/`** — Directory for generated proposal files.
+- **DRAFT_ANALYSIS = `grant-proposal/DRAFT_ANALYSIS.md`** — Structured extraction of the supplied proposal draft.
+- **QUERY_PACK = `grant-proposal/QUERY_PACK.md`** — Atomic literature queries mapped to draft claims.
+- **EVIDENCE_MATRIX = `grant-proposal/EVIDENCE_MATRIX.md`** — Claim-to-paper evidence ledger written before novelty checking.
 - **LANGUAGE = `auto`** — Output language. Auto-detected from grant type: KAKENHI→Japanese, NSF→English, NSFC→Chinese, ERC→English, DFG→English (or German), SNSF→English, ARC→English, NWO→English. Override explicitly if needed.
 - **AUTO_PROCEED = false** — At each checkpoint, **always wait for explicit user confirmation** before proceeding. Grant proposals require PI-specific judgment at every stage. Set `true` only if user explicitly requests fully autonomous mode.
 
@@ -176,15 +179,44 @@ If insufficient context exists:
 - No publication list → leave PI qualification section with `[TODO: Add publications]` placeholders
 - Has review-stage/AUTO_REVIEW.md → extract reviewer feedback and use it to strengthen the feasibility narrative
 
+### Phase 0 output contract: draft analysis and query pack
+
+Before Phase 1, turn the supplied application draft (or freeform idea) into
+three auditable artifacts under `grant-proposal/`:
+
+1. `DRAFT_ANALYSIS.md`: record the research object and context, central
+   problem, draft hypotheses/claims, proposed method, aims/variables/data/
+   evaluation, claimed novelty, and unsupported or citation-sensitive claims.
+2. `QUERY_PACK.md`: create 5–12 independent query records (use fewer only when
+   the draft genuinely has fewer independent claims). Each record must
+   include a Query ID, Draft claim, research question, query text, aliases,
+   evidence sought, counter-evidence target, and source scope. Cover the
+   phenomenon, mechanism, closest methods, limitations/negative evidence,
+   competing work, and evaluation context; do not collapse the whole draft
+   into one topic query.
+3. Before entering Phase 1, ensure all three artifacts exist and are non-empty:
+   initialize `EVIDENCE_MATRIX.md` with one row per Query ID, `Query status = PENDING`,
+   and `Evidence direction = unclear`. Every load-bearing claim must
+   map to a Query ID. Mark genuinely unsearchable claims as `UNSEARCHABLE`
+   instead of inventing support.
+
 ### Phase 1: Literature & Landscape Positioning
 
 Invoke `/research-lit` to ground the proposal in real literature, then search for competing funded projects:
 
 ```
-/research-lit "$ARGUMENTS"
+/research-lit "$ARGUMENTS — draft analysis: grant-proposal/DRAFT_ANALYSIS.md — query pack: grant-proposal/QUERY_PACK.md — evidence matrix: grant-proposal/EVIDENCE_MATRIX.md"
 ```
 
 **What this does:**
+- Consume `DRAFT_ANALYSIS.md` and `QUERY_PACK.md` as the research plan rather
+  than treating the draft as one undifferentiated topic.
+- When Zotero is requested, require one `mcp__zotero_mcp__semantic_search`
+  call for each query and retain `SEARCHED`, `NO_HIT`, `UNSEARCHABLE`, or
+  `ERROR` status for every Query ID.
+- Write `EVIDENCE_MATRIX.md` with claim, Query ID, `itemKey`, matched passage,
+  supports/contradicts/limits direction, and verification status before
+  running `/novelty-check` or drafting proposal prose.
 - Reuse existing surveys if `/research-lit` was already run and notes exist
 - Otherwise invoke `/research-lit` for multi-source literature search (arXiv, Scholar, Zotero, local PDFs)
 - Search for **funded projects** in the same area via WebSearch:
@@ -197,6 +229,16 @@ Invoke `/research-lit` to ground the proposal in real literature, then search fo
   ```
   /novelty-check "[proposed gap statement]"
   ```
+- Do not present the landscape checkpoint until the evidence matrix exists and
+  every query has a terminal status; surface `NO_HIT` rows and requested-but-
+  missing Zotero configuration explicitly.
+
+**Phase 1 completion gate:** Do not call `/novelty-check` or present the
+landscape checkpoint until `EVIDENCE_MATRIX.md` exists, every query has a
+terminal `SEARCHED`, `NO_HIT`, `UNSEARCHABLE`, or `ERROR` status, and the
+matrix distinguishes `supports`, `contradicts`, `limits`, or `unclear` for each
+draft claim. `NO_HIT` and `UNSEARCHABLE` rows use `unclear` with an explicit
+explanation and must remain visible.
 - Build the **gap statement** — the single most important sentence in the proposal:
   ```
   "Despite progress in [X], [specific gap] remains unaddressed because [reason].
@@ -494,6 +536,9 @@ Implement CRITICAL and MAJOR fixes. If MAX_REVIEW_ROUNDS > 1, re-submit for anot
 
 ```
 grant-proposal/
+├── DRAFT_ANALYSIS.md          # Structured extraction of the input draft
+├── QUERY_PACK.md              # Per-claim literature queries
+├── EVIDENCE_MATRIX.md         # Claim → paper evidence → gap mapping
 ├── GRANT_PROPOSAL.md          # Complete proposal, all sections
 ├── GRANT_REVIEW.md            # Review history and reviewer feedback
 ├── GRANT_STATE.json           # State persistence file
@@ -530,6 +575,9 @@ Before declaring done:
 - [ ] Language matches the grant type (Japanese for KAKENHI, Chinese for NSFC, etc.)
 - [ ] No leftover `[TODO]` markers except for PI-specific information
 - [ ] References are real (no hallucinated citations)
+- [ ] `DRAFT_ANALYSIS.md` records the source draft and load-bearing claims
+- [ ] `QUERY_PACK.md` maps every searchable claim to an independent query
+- [ ] `EVIDENCE_MATRIX.md` records query status, evidence direction, and verification status
 - [ ] Review feedback has been addressed (CRITICAL and MAJOR items)
 
 **🚦 Final Checkpoint:** Present the completed proposal summary:
@@ -562,6 +610,7 @@ What would you like to do next?
 - **Do NOT fabricate budget amounts.** Generate narrative budget justification only. Leave specific dollar/yen/yuan/euro amounts as `[AMOUNT]` placeholders for the user to fill in.
 - **Do NOT fabricate PI information.** If no publication list is available, leave `[TODO: Add publications]` placeholders. Never invent papers, grants, or credentials.
 - **Do NOT hallucinate citations.** Use references from literature survey. Mark uncertain citations with `[VERIFY]`.
+- **Evidence-first proposal flow.** Always produce `DRAFT_ANALYSIS.md` → `QUERY_PACK.md` → per-query Zotero semantic retrieval (when requested) → `EVIDENCE_MATRIX.md` before novelty claims or proposal prose.
 - **Grant ≠ paper.** A grant argues for future work (feasibility + potential). A paper argues for completed work (results + claims). Write accordingly — emphasize "what we will do" and "why it will work", not "what we found."
 - **Aims must be independently valuable.** If Aim 2 fails, Aim 1 and Aim 3 should still produce publishable results.
 - **Preliminary data de-risks.** Include any pilot results, existing datasets, or prior publications that demonstrate feasibility.
@@ -586,6 +635,9 @@ Parameters can be passed inline with `—` separator. They flow to sub-skills wh
 | `max review rounds` | 2 | External review cycles | — |
 | `sources` | all | Literature sources | → `/research-lit` |
 | `arxiv download` | false | Download arXiv PDFs | → `/research-lit` |
+| `draft analysis` | `grant-proposal/DRAFT_ANALYSIS.md` | Structured input-draft extraction | → `/research-lit` |
+| `query pack` | `grant-proposal/QUERY_PACK.md` | Per-claim research questions | → `/research-lit` |
+| `evidence matrix` | `grant-proposal/EVIDENCE_MATRIX.md` | Per-query evidence ledger | → `/research-lit` |
 | `reviewer model` | gpt-6-astra | Codex review model | → reviewer agent |
 | `auto proceed` | false | Skip checkpoints | — |
 

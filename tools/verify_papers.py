@@ -114,7 +114,7 @@ DEFAULT_HALLUCINATION_WARN_THRESHOLD = 0.2
 
 def _arxiv_user_agent() -> str:
     contact = os.environ.get("ARIS_VERIFY_EMAIL", "").strip()
-    base = "verify-papers/1.0 (+https://github.com/wanshuiyin/Auto-claude-code-research-in-sleep)"
+    base = "verify-papers/1.0 (+https://github.com/Pyrojewel-zard/Auto-claude-code-research-in-sleep)"
     return f"{base} (mailto:{contact})" if contact else base
 
 

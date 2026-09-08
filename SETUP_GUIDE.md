@@ -76,7 +76,7 @@ Install ARIS skills into your project via symlinks (the recommended project-loca
 
 ```bash
 # 1. Clone ARIS once to a stable location, ~/aris_repo is the local dir name (customizable)
-git clone https://github.com/wanshuiyin/Auto-claude-code-research-in-sleep.git ~/aris_repo
+git clone https://github.com/Pyrojewel-zard/Auto-claude-code-research-in-sleep.git ~/aris_repo
 
 # 2. Install in each project that uses ARIS (via symlinks):
 cd ~/your-paper-project

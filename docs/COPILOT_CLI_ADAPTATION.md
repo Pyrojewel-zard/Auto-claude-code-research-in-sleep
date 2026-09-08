@@ -34,7 +34,7 @@ npm install -g @github/copilot-cli
 ### 2.2 Clone ARIS and install skills
 
 ```bash
-git clone https://github.com/wanshuiyin/Auto-claude-code-research-in-sleep.git ~/aris_repo
+git clone https://github.com/Pyrojewel-zard/Auto-claude-code-research-in-sleep.git ~/aris_repo
 cd ~/your-project
 
 # Symlink install (recommended, stays in sync with upstream)

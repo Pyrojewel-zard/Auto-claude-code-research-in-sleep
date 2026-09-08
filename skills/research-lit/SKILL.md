@@ -2,7 +2,7 @@
 name: research-lit
 description: Search and analyze research papers, find related work, summarize key ideas. Use when user says "find papers", "related work", "literature review", "what does this paper say", or needs to understand academic papers.
 argument-hint: "[paper-topic-or-url]"
-allowed-tools: Bash(*), Read, Glob, Grep, WebSearch, WebFetch, Write, Agent, mcp__zotero__*, mcp__obsidian-vault__*
+allowed-tools: Bash(*), Read, Glob, Grep, WebSearch, WebFetch, Write, Agent, mcp__zotero__*, mcp__zotero_mcp__*, mcp__obsidian-vault__*
 ---
 
 # Research Literature Review
@@ -20,19 +20,26 @@ Research topic: $ARGUMENTS
 - **SOURCES = `all`** — Which literature sources to search. Options: `zotero`, `obsidian`, `local`, `web`, `semantic-scholar`, `deepxiv`, `exa`, `gemini`, `openalex`, `all`. Full source table and selection rules: see `## Data Sources` below.
 - **ARXIV_DOWNLOAD = false** — When `true`, download top 3-5 most relevant arXiv PDFs to PAPER_LIBRARY after search. When `false` (default), only fetch metadata (title, abstract, authors) via arXiv API — no files are downloaded.
 - **ARXIV_MAX_DOWNLOAD = 5** — Maximum number of PDFs to download when `ARXIV_DOWNLOAD = true`.
+- **DRAFT_ANALYSIS** — Optional path supplied with `— draft analysis:`; proposal claims and context extracted from an existing draft.
+- **QUERY_PACK** — Optional path supplied with `— query pack:`; one record per independent research question.
+- **EVIDENCE_MATRIX** — Optional path supplied with `— evidence matrix:`; the auditable claim-to-paper ledger written before synthesis.
 
 > 💡 Overrides:
 > - `/research-lit "topic" — paper library: ~/my_papers/` — custom local PDF path
 > - `/research-lit "topic" — sources: zotero, local` — only search Zotero + local PDFs
 > - `/research-lit "topic" — sources: web` — only search the web (skip all local)
 > - `/research-lit "topic" — sources: web, semantic-scholar` — also search Semantic Scholar for published venue papers (IEEE, ACM, etc.)
+> - `/research-lit "topic" — draft analysis: grant-proposal/DRAFT_ANALYSIS.md — query pack: grant-proposal/QUERY_PACK.md — evidence matrix: grant-proposal/EVIDENCE_MATRIX.md` — run proposal evidence mode
 > - `/research-lit "topic" — sources: all, deepxiv` — use default sources plus DeepXiv
 > - `/research-lit "topic" — arxiv download: true` — download top relevant arXiv PDFs
 > - `/research-lit "topic" — arxiv download: true, max download: 10` — download up to 10 PDFs
 
 ## Data Sources
 
-This skill checks multiple sources **in priority order**. All are optional — if a source is not configured or not requested, skip it silently.
+This skill checks multiple sources **in priority order**. Sources not requested may
+be skipped silently. If the user explicitly requests Zotero or Obsidian and the
+requested MCP is not configured, report that configuration failure instead of
+silently presenting a fallback as if the requested source had been searched.
 
 ### Source Selection
 
@@ -65,7 +72,7 @@ Examples:
 
 | Priority | Source | ID | How to detect | What it provides |
 |----------|--------|----|---------------|-----------------|
-| 1 | **Zotero** (via MCP) | `zotero` | Try calling any `mcp__zotero__*` tool — if unavailable, skip | Collections, tags, annotations, PDF highlights, BibTeX, semantic search |
+| 1 | **Zotero** (via MCP) | `zotero` | Try the preferred `mcp__zotero_mcp__*` tools, then the host's equivalent `mcp__zotero__*` name | Collections, tags, annotations, PDF highlights, BibTeX, semantic search |
 | 2 | **Obsidian** (via MCP) | `obsidian` | Try calling any `mcp__obsidian-vault__*` tool — if unavailable, skip | Research notes, paper summaries, tagged references, wikilinks |
 | 3 | **Local PDFs** | `local` | `Glob: papers/**/*.pdf, literature/**/*.pdf` | Raw PDF content (first 3 pages) |
 | 4 | **Web search** | `web` | Always available (WebSearch) | arXiv, Semantic Scholar, Google Scholar |
@@ -75,21 +82,85 @@ Examples:
 | 8 | **Gemini** (MCP / CLI) | `gemini` | `mcp__gemini-cli__ask-gemini` tool available, or `gemini` CLI installed | AI-powered broad literature discovery — decomposes topics into sub-problems, aliases, and variants for wider retrieval. Prefers MCP, falls back to CLI. **Only runs when explicitly requested** via `— sources: gemini` or `— sources: all, gemini` |
 | 9 | **OpenAlex** | `openalex` | `$OPENALEX_FETCHER` resolves (canonical name `openalex_fetch.py`, per integration-contract §2) **and** Python `requests` module importable | Open citation graph with institutional affiliations, funding data, and comprehensive metadata across 250M+ works. Fully open API. **Only runs when explicitly requested** via `— sources: openalex` or `— sources: all, openalex` |
 
-> **Graceful degradation**: If no MCP servers are configured, the skill works exactly as before (local PDFs + web search). Zotero and Obsidian are pure additions.
+> **Graceful degradation**: If Zotero/Obsidian was not requested, an unavailable
+> MCP source may be skipped and the remaining sources may continue. If the user
+> explicitly requested that source, stop and explain how to configure it.
 
 ## Workflow
 
+### Step 0: Proposal query-pack mode
+
+Activate this mode whenever `$ARGUMENTS` contains `— query pack:` or
+`— draft analysis:`. The proposal orchestrator uses this mode to prevent a
+complete draft from being reduced to one vague topic.
+
+1. Read `DRAFT_ANALYSIS` and `QUERY_PACK`. If a draft-analysis path is present
+   but no query pack exists, create `QUERY_PACK.md` first from the draft; do not
+   jump directly to a single topic search. Each query record must have `QID`,
+   `draft claim`, `research question`, `query`, `aliases`, `evidence sought`,
+   `counter-evidence target`, and `source scope`.
+2. Initialize or update `EVIDENCE_MATRIX` with one coverage row for every Query ID (QID).
+   The minimum row shape is:
+
+   ```markdown
+   | Query ID | Draft claim | Query status | itemKey | Paper | Matched chunk | Evidence direction | Verification status | Proposal use |
+   |----------|-------------|--------------|---------|-------|---------------|--------------------|---------------------|--------------|
+   ```
+
+   `Evidence direction` must be one of `supports/contradicts/limits/unclear`.
+   Never convert a relevance score into support for a claim.
+3. If `zotero` is in the requested sources, check semantic-index status and
+   run one preferred semantic-search call for each query. The preferred tool is:
+
+   ```json
+   mcp__zotero_mcp__semantic_search({
+     "query": "<query record's natural-language query>",
+     "topK": 10,
+     "candidateK": 50,
+     "includeChunks": true,
+     "useRerank": true,
+     "language": "all"
+   })
+   ```
+
+   Use `collectionName`, `collectionKey`, `itemKeys`, or `venue` from the
+   query record when present. If the host exposes a different Zotero MCP name,
+   adapt the call but preserve the semantic-search operation and its per-query
+   one-call contract. Do not replace it with keyword search merely because a
+   keyword search is easier.
+4. For the strongest deduplicated hits per QID, retrieve item details, the
+   matched content chunk/full text, and user annotations when available. Use
+   `get_item_details`, `get_content`, and `search_annotations` (or the host's
+   equivalent names). Record the exact item key, bibliographic metadata,
+   relevant passage or annotation, evidence direction, and verification state
+   in `EVIDENCE_MATRIX.md`.
+5. Every query must end as `SEARCHED`, `NO_HIT`, `UNSEARCHABLE`, or `ERROR`.
+   For an empty result, retry once with the query's declared aliases and then
+   record `NO_HIT`; never delete the query or claim that the literature is
+   empty. `NO_HIT` is an auditable result, not a success signal.
+6. Write `EVIDENCE_MATRIX.md` before external search, novelty analysis, or
+   proposal prose revision. The matrix is the handoff contract to the
+   orchestrator; its rows must retain papers with `UNVERIFIED` or
+   `VERIFY_PENDING` status and label them clearly.
+
 ### Step 0a: Search Zotero Library (if available)
 
-**Skip this step entirely if Zotero MCP is not configured.**
+**If the user explicitly requested Zotero and the Zotero MCP is not configured,
+initialize every Query ID in `EVIDENCE_MATRIX.md` with `ERROR` (or
+`UNSEARCHABLE` when the query itself cannot be run), then stop and report the
+missing configuration. If Zotero was not requested, skip this step when
+unavailable.
 
 Try calling a Zotero MCP tool (e.g., search). If it succeeds:
 
-1. **Search by topic**: Use the Zotero search tool to find papers matching the research topic
-2. **Read collections**: Check if the user has a relevant collection/folder for this topic
-3. **Extract annotations**: For highly relevant papers, pull PDF highlights and notes — these represent what the user found important
-4. **Export BibTeX**: Get citation data for relevant papers (useful for `/paper-write` later)
-5. **Compile results**: For each relevant Zotero entry, extract:
+1. **Search by query pack first**: In proposal query-pack mode, the per-query
+   semantic-search calls in Step 0 are authoritative. A broad topic search is
+   secondary and must not replace a missing QID result.
+2. **Search by topic**: Outside query-pack mode, use the Zotero search tool to find papers matching the research topic
+3. **Read collections**: Check if the user has a relevant collection/folder for this topic
+4. **Extract annotations**: For highly relevant papers, pull PDF highlights and notes — these represent what the user found important
+5. **Export BibTeX**: Get citation data for relevant papers (useful for `/paper-write` later)
+6. **Compile results**: For each relevant Zotero entry, extract:
    - Title, authors, year, venue
    - User's annotations/highlights (if any)
    - Tags the user assigned
@@ -654,6 +725,8 @@ Retention rule above), extract:
 - Identify consensus vs disagreements in the field
 - Find gaps that our work could fill
 - If Obsidian notes exist, incorporate the user's own insights into the synthesis
+- In proposal query-pack mode, synthesize from `EVIDENCE_MATRIX.md` and retain
+  the mapping from each gap back to its QID and draft claim.
 
 ### Step 4: Output
 Present as a structured literature table:
@@ -664,6 +737,18 @@ Present as a structured literature table:
 ```
 
 Plus a narrative summary of the landscape (3-5 paragraphs).
+
+In proposal query-pack mode, also report:
+
+```markdown
+### Query coverage
+| QID | Status | Hit count | Best evidence direction | Open issue |
+|-----|--------|-----------|-------------------------|------------|
+```
+
+The output must link or name `EVIDENCE_MATRIX.md` so the proposal orchestrator
+can use it as the input to `/novelty-check` and the later Claims-Aims-Evidence
+Matrix.
 
 If Zotero BibTeX was exported, include a `references.bib` snippet for direct use in paper writing.
 
@@ -752,5 +837,5 @@ python3 "$WIKI_SCRIPT" ingest_paper research-wiki/ \
 - Distinguish between peer-reviewed and preprints
 - Be honest about limitations of each paper
 - Note if a paper directly competes with or supports our approach
-- **Never fail because a MCP server is not configured** — always fall back gracefully to the next data source
+- If a user explicitly requested Zotero or Obsidian and that MCP is not configured, report the missing source and stop that requested-source path; do not claim coverage from a fallback source.
 - Zotero/Obsidian tools may have different names depending on how the user configured the MCP server (e.g., `mcp__zotero__search` or `mcp__zotero-mcp__search_items`). Try the most common patterns and adapt.

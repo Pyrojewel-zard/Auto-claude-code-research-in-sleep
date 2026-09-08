@@ -18,7 +18,7 @@
 ### 2.1 克隆仓库并配置 Skills
 
 ```powershell
-git clone https://github.com/wanshuiyin/Auto-claude-code-research-in-sleep.git
+git clone https://github.com/Pyrojewel-zard/Auto-claude-code-research-in-sleep.git
 ```
 
 **安装 Skills 到 Trae 的两种方式：**

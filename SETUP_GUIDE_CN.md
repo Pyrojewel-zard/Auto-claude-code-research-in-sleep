@@ -76,7 +76,7 @@ touch CLAUDE.md
 
 ```bash
 # 1. 克隆 ARIS 一次到稳定位置，~/aris_repo 是本地目录名，可自定义
-git clone https://github.com/wanshuiyin/Auto-claude-code-research-in-sleep.git ~/aris_repo
+git clone https://github.com/Pyrojewel-zard/Auto-claude-code-research-in-sleep.git ~/aris_repo
 
 # 2. 在每个使用 ARIS 的项目中安装（通过符号链接）：
 cd ~/your-paper-project

@@ -267,7 +267,7 @@ Oracle MCP is maintained at [`steipete/oracle`](https://github.com/steipete/orac
 
 ## Optional: Gemini via Antigravity CLI (`— reviewer: agy`)
 
-When the user explicitly passes `— reviewer: agy`, route the review through the **gemini-review MCP** with the Antigravity (`agy`) backend — a native cross-model reviewer for Antigravity users who don't run Codex MCP / Oracle. Added in [#267](https://github.com/wanshuiyin/Auto-claude-code-research-in-sleep/pull/267).
+When the user explicitly passes `— reviewer: agy`, route the review through the **gemini-review MCP** with the Antigravity (`agy`) backend — a native cross-model reviewer for Antigravity users who don't run Codex MCP / Oracle. Added in [#267](https://github.com/Pyrojewel-zard/Auto-claude-code-research-in-sleep/pull/267).
 
 ### Routing Logic (add to any reviewer-invoking skill)
 

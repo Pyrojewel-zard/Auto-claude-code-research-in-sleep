@@ -18,6 +18,9 @@ Research topic: $ARGUMENTS
 - **ARXIV_DOWNLOAD = false** — When `true`, download top 3-5 most relevant arXiv PDFs to PAPER_LIBRARY after search. When `false` (default), only fetch metadata (title, abstract, authors) via arXiv API — no files are downloaded.
 - **ARXIV_MAX_DOWNLOAD = 5** — Maximum number of PDFs to download when `ARXIV_DOWNLOAD = true`.
 - **REVIEWER_BACKEND = `codex`** — Default reviewer route for optional literature synthesis cross-checks. Use `--reviewer: oracle-pro` only when explicitly requested; if Oracle is unavailable, warn and continue with Codex xhigh or local synthesis.
+- **PROPOSAL_DRAFT_ANALYSIS = `grant-proposal/DRAFT_ANALYSIS.md`** — Structured claims and assumptions extracted from a proposal draft.
+- **PROPOSAL_QUERY_PACK = `grant-proposal/QUERY_PACK.md`** — Atomic, traceable literature queries derived from the draft.
+- **PROPOSAL_EVIDENCE_MATRIX = `grant-proposal/EVIDENCE_MATRIX.md`** — Claim-to-paper evidence ledger written before novelty or proposal prose.
 
 > 💡 Overrides:
 > - `/research-lit "topic" — paper library: ~/my_papers/` — custom local PDF path
@@ -76,6 +79,44 @@ Examples:
 
 ## Workflow
 
+### Step 0: Proposal query-pack mode
+
+When the caller supplies `DRAFT_ANALYSIS.md` or `QUERY_PACK.md`, enter proposal
+evidence mode before ordinary topic search:
+
+1. Read `grant-proposal/DRAFT_ANALYSIS.md` and `grant-proposal/QUERY_PACK.md`.
+   Each query must retain a Query ID, Draft claim, research question, query
+   text, aliases, evidence sought, counter-evidence target, and source scope.
+2. Initialize or update `grant-proposal/EVIDENCE_MATRIX.md` with one coverage row for every Query ID,
+   plus zero or more evidence rows for retrieved
+   passages. A `NO_HIT`, `UNSEARCHABLE`, or `ERROR` query must still keep its
+   coverage row:
+
+   ```text
+   | Query ID | Draft claim | Query status | itemKey | Paper | Matched chunk | Evidence direction | Verification status | Proposal use |
+   |----------|-------------|--------------|---------|-------|---------------|--------------------|---------------------|--------------|
+   ```
+
+   Use `supports`, `contradicts`, `limits`, or `unclear` for Evidence direction;
+   no-result and unsearchable rows use `unclear` with an explanation.
+3. If Zotero was explicitly requested, call the preferred
+   `mcp__zotero_mcp__semantic_search` tool **for each query** (one call per
+   Query ID), preserving the query text and recording the returned `itemKey`
+   and chunks. A host-specific Zotero alias may be adapted only when it
+   exposes the same semantic-search operation; do not silently replace it with
+   keyword search.
+4. Retrieve item details, content, annotations, or full text as available and
+   verify every passage against the paper. Keep supports, contradictions,
+   limitations, and unresolved claims distinct.
+5. Give every query a terminal status: `SEARCHED`, `NO_HIT`, `UNSEARCHABLE`, or
+   `ERROR`. Retry an empty result once with its aliases, then record `NO_HIT`
+   instead of dropping the query. If Zotero was explicitly requested but is
+   not configured, initialize all query rows with `ERROR` (or
+   `UNSEARCHABLE` where applicable), report that missing configuration, and do
+   not claim that the query was searched.
+6. Write the evidence matrix before external search, novelty checking, or
+   proposal prose. Preserve unverified and pending rows for later review.
+
 ### Per-source/per-paper fan-out
 
 Retrieval and extraction are breadth-bound. Use fresh `spawn_agent` shards when
@@ -88,9 +129,9 @@ verification remains deterministic; optional Codex synthesis review is
 same-family provisional. See
 [`fan-out-pattern.md`](../shared-references/fan-out-pattern.md).
 
-### Step 0a: Search Zotero Library (if available)
+### Step 0a: Search Zotero Library (ordinary topic mode)
 
-**If the user explicitly requested Zotero and the Zotero MCP is not configured, stop and ask the user to configure it. Otherwise skip this step entirely.**
+**If the user explicitly requested Zotero and the Zotero MCP is not configured, stop and report that it is not configured. Otherwise skip this step entirely. In proposal query-pack mode, follow Step 0 first.**
 
 Try calling a Zotero MCP tool (e.g., search). If it succeeds:
 
@@ -413,6 +454,8 @@ For each relevant paper (from all sources), extract:
 - **Source**: Where we found it (Zotero/Obsidian/local/web) — helps user know what they already have vs what's new
 
 ### Step 3: Synthesize
+- In proposal query-pack mode, confirm every Query ID has a terminal status and
+  that `EVIDENCE_MATRIX.md` is complete before synthesizing a gap.
 - Group papers by approach/theme
 - Identify consensus vs disagreements in the field
 - Find gaps that our work could fill

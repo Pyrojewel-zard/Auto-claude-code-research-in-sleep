@@ -163,8 +163,8 @@ codex mcp add gemini-review --env GEMINI_REVIEW_BACKEND=api --env GEMINI_REVIEW_
 ## 引用与来源
 
 - 上游 ARIS 的 overlay 组织方式：
-  - <https://github.com/wanshuiyin/Auto-claude-code-research-in-sleep/tree/main/skills/skills-codex-claude-review>
-  - <https://github.com/wanshuiyin/Auto-claude-code-research-in-sleep/tree/main/mcp-servers/claude-review>
+  - <https://github.com/Pyrojewel-zard/Auto-claude-code-research-in-sleep/tree/main/skills/skills-codex-claude-review>
+  - <https://github.com/Pyrojewel-zard/Auto-claude-code-research-in-sleep/tree/main/mcp-servers/claude-review>
 - 本仓库里的本地 Gemini reviewer bridge：
   - `mcp-servers/gemini-review/README.md`
 - 本覆盖层依赖的 Gemini 官方后端：

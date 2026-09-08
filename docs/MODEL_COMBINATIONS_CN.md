@@ -112,7 +112,7 @@ codex setup   # 提示选模型时选 gpt-6-astra
 <summary><b>展开全局拷贝 fallback 安装命令与非 Claude 执行者的验证 prompt</b></summary>
 
 ```bash
-git clone https://github.com/wanshuiyin/Auto-claude-code-research-in-sleep.git
+git clone https://github.com/Pyrojewel-zard/Auto-claude-code-research-in-sleep.git
 cd Auto-claude-code-research-in-sleep
 cp -r skills/* ~/.claude/skills/
 claude

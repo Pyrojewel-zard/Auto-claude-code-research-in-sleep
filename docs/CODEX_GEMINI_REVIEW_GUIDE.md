@@ -24,7 +24,7 @@ The install order matters:
 ## Install
 
 ```bash
-git clone https://github.com/wanshuiyin/Auto-claude-code-research-in-sleep.git
+git clone https://github.com/Pyrojewel-zard/Auto-claude-code-research-in-sleep.git
 cd Auto-claude-code-research-in-sleep
 
 mkdir -p ~/.codex/skills

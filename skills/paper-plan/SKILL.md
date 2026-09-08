@@ -128,7 +128,7 @@ Slot ID format: `GAP_<SECTION>_<FEATURE>`, all-caps, stable across regenerations
 - If `style_profile.md` extraction failed or the user has no project assets, skip Gap Report (no error; just do not emit the file).
 - The gap report is **also subject to reviewer isolation** — never passed to reviewer / auditor sub-agents (same rule as `style_profile.md`).
 
-Original idea: @zhangpelf in [#217](https://github.com/wanshuiyin/Auto-claude-code-research-in-sleep/issues/217).
+Original idea: @zhangpelf in [#217](https://github.com/Pyrojewel-zard/Auto-claude-code-research-in-sleep/issues/217).
 
 ## Workflow
 

@@ -22,7 +22,7 @@
 Codex 路线默认推荐项目级安装：
 
 ```bash
-git clone https://github.com/wanshuiyin/Auto-claude-code-research-in-sleep.git ~/aris_repo
+git clone https://github.com/Pyrojewel-zard/Auto-claude-code-research-in-sleep.git ~/aris_repo
 cd ~/your-project
 
 bash ~/aris_repo/tools/install_aris_codex.sh .

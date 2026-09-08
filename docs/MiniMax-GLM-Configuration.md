@@ -25,7 +25,7 @@ npm install -g @anthropic-ai/claude-code
 ### 第 2 步：克隆 MCP Servers
 
 ```bash
-git clone https://github.com/wanshuiyin/Auto-claude-code-research-in-sleep.git
+git clone https://github.com/Pyrojewel-zard/Auto-claude-code-research-in-sleep.git
 cd Auto-claude-code-research-in-sleep/mcp-servers/llm-chat
 pip install -r requirements.txt
 cd ../..
@@ -186,7 +186,7 @@ claude
 
 ## 参考
 
-- [Auto-claude-code-research-in-sleep 主项目](https://github.com/wanshuiyin/Auto-claude-code-research-in-sleep)
+- [Auto-claude-code-research-in-sleep 主项目](https://github.com/Pyrojewel-zard/Auto-claude-code-research-in-sleep)
 - [方案 A：GLM + GPT](./MODEL_COMBINATIONS_CN.md#alt-a-glm--gpt)
 - [方案 B：GLM + MiniMax](./MODEL_COMBINATIONS_CN.md#alt-b-glm--minimax)
 

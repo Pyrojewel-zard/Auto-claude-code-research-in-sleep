@@ -164,8 +164,8 @@ Operational note:
 ## References
 
 - Upstream overlay pattern from ARIS:
-  - <https://github.com/wanshuiyin/Auto-claude-code-research-in-sleep/tree/main/skills/skills-codex-claude-review>
-  - <https://github.com/wanshuiyin/Auto-claude-code-research-in-sleep/tree/main/mcp-servers/claude-review>
+  - <https://github.com/Pyrojewel-zard/Auto-claude-code-research-in-sleep/tree/main/skills/skills-codex-claude-review>
+  - <https://github.com/Pyrojewel-zard/Auto-claude-code-research-in-sleep/tree/main/mcp-servers/claude-review>
 - Local Gemini reviewer bridge in this repo:
   - `mcp-servers/gemini-review/README.md`
 - Gemini backends referenced by this overlay:

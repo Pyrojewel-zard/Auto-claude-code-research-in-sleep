@@ -52,7 +52,7 @@ Antigravity 支持多种模型作为**执行器**（运行 ARIS 工作流的模�
 ### 3.1 安装 Skills
 
 ```bash
-git clone https://github.com/wanshuiyin/Auto-claude-code-research-in-sleep.git
+git clone https://github.com/Pyrojewel-zard/Auto-claude-code-research-in-sleep.git
 cd Auto-claude-code-research-in-sleep
 
 # 方案 A：全局安装（所有项目可用）

@@ -75,7 +75,7 @@ OpenRouter should be treated as an opt-in reviewer backend via `/auto-review-loo
 ### Step 1: Clone ARIS
 
 ```bash
-git clone https://github.com/wanshuiyin/Auto-claude-code-research-in-sleep.git /path/to/aris_repo
+git clone https://github.com/Pyrojewel-zard/Auto-claude-code-research-in-sleep.git /path/to/aris_repo
 cd /path/to/aris_repo
 ```
 

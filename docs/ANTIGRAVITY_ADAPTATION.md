@@ -52,7 +52,7 @@ Antigravity supports multiple models as the **executor** (the model that runs AR
 ### 3.1 Install skills
 
 ```bash
-git clone https://github.com/wanshuiyin/Auto-claude-code-research-in-sleep.git
+git clone https://github.com/Pyrojewel-zard/Auto-claude-code-research-in-sleep.git
 cd Auto-claude-code-research-in-sleep
 
 # Option A: Global install (available across all projects)

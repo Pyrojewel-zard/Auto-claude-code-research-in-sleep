@@ -24,7 +24,7 @@ This package is still an appendage to the Claude mainline, not a separate Codex-
 Project-local install is the default path for Codex:
 
 ```bash
-git clone https://github.com/wanshuiyin/Auto-claude-code-research-in-sleep.git ~/aris_repo
+git clone https://github.com/Pyrojewel-zard/Auto-claude-code-research-in-sleep.git ~/aris_repo
 cd ~/your-project
 
 bash ~/aris_repo/tools/install_aris_codex.sh .
