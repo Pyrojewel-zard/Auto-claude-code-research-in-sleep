@@ -17,6 +17,8 @@ from update_anti_lock import update_lock  # noqa: E402
 
 REPO_URL = "git@github.com:wanshuiyin/Anti-Autoresearch.git"
 LOCKED_SHA = "0123456789abcdef0123456789abcdef01234567"
+COMMITTED_LOCK_PATH = TOOLS / "anti-autoresearch.lock.json"
+COMMITTED_LOCKED_SHA = "78fdac2580ac8005cafe9b543a78458e30f19c01"
 
 
 def _run(*args, cwd=None):
@@ -106,6 +108,37 @@ def test_update_lock_writes_url_commit_and_contract(tmp_path):
         "commit": LOCKED_SHA,
         "contract_version": "0.1",
     }
+
+
+def test_committed_lock_preserves_exact_tested_pin():
+    assert json.loads(COMMITTED_LOCK_PATH.read_text(encoding="utf-8")) == {
+        "repo_url": REPO_URL,
+        "commit": COMMITTED_LOCKED_SHA,
+        "contract_version": "0.1",
+    }
+
+
+@pytest.mark.skipif(
+    not os.environ.get("ARIS_VALIDATE_ANTI_REMOTE"),
+    reason="set ARIS_VALIDATE_ANTI_REMOTE=1 to opt into the network check",
+)
+def test_committed_lock_remote_advertises_exact_pin():
+    lock = json.loads(COMMITTED_LOCK_PATH.read_text(encoding="utf-8"))
+    result = subprocess.run(
+        ["git", "ls-remote", "--exit-code", lock["repo_url"]],
+        check=False,
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+
+    assert result.returncode == 0, result.stderr or result.stdout
+    advertised_commits = {
+        line.split(maxsplit=1)[0]
+        for line in result.stdout.splitlines()
+        if line.strip()
+    }
+    assert lock["commit"] in advertised_commits
 
 
 def test_updater_reads_clean_checkout_head(tmp_path):
@@ -231,3 +264,43 @@ def test_distribution_resolution_is_commit_pinned(tmp_path, monkeypatch):
     assert result.commit == commit
     assert result.repo_path.is_relative_to((tmp_path / "cache").resolve())
     assert result.repo_path.name == commit
+
+
+def test_distribution_resolution_rejects_untracked_cache_tampering(
+    tmp_path, monkeypatch
+):
+    source_repo = tmp_path / "source"
+    commit = _write_checkout(source_repo)
+    lock_path = tmp_path / "lock.json"
+    cache_root = tmp_path / "cache"
+    _write_lock(lock_path, repo_url=str(source_repo), commit=commit)
+    monkeypatch.delenv("ARIS_ANTI_REPO", raising=False)
+
+    result = resolve_anti(lock_path, None, cache_root)
+    (result.repo_path / "untracked.txt").write_text("tampered\n", encoding="utf-8")
+
+    with pytest.raises(ValueError, match="dirty"):
+        resolve_anti(lock_path, None, cache_root)
+    assert (
+        (result.repo_path / "untracked.txt").read_text(encoding="utf-8")
+        == "tampered\n"
+    )
+
+
+def test_distribution_resolution_rejects_tracked_cache_tampering(
+    tmp_path, monkeypatch
+):
+    source_repo = tmp_path / "source"
+    commit = _write_checkout(source_repo)
+    lock_path = tmp_path / "lock.json"
+    cache_root = tmp_path / "cache"
+    _write_lock(lock_path, repo_url=str(source_repo), commit=commit)
+    monkeypatch.delenv("ARIS_ANTI_REPO", raising=False)
+
+    result = resolve_anti(lock_path, None, cache_root)
+    schema_path = result.repo_path / "schemas" / "query_coverage.schema.json"
+    schema_path.write_text('{"tampered": true}\n', encoding="utf-8")
+
+    with pytest.raises(ValueError, match="dirty"):
+        resolve_anti(lock_path, None, cache_root)
+    assert schema_path.read_text(encoding="utf-8") == '{"tampered": true}\n'

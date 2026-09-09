@@ -90,6 +90,12 @@ def _head(repo: Path) -> str:
     return _validate_commit(_git(repo, "rev-parse", "HEAD"))
 
 
+def _assert_clean(repo: Path) -> None:
+    status = _git(repo, "status", "--porcelain=v1", "--untracked-files=all")
+    if status:
+        raise ValueError(f"pinned Anti cache is dirty: {repo}")
+
+
 def _contract_version(repo: Path) -> str:
     schema_path = repo / CONTRACT_SCHEMA_PATH
     if not schema_path.is_file():
@@ -152,6 +158,10 @@ def _clone_pinned(repo_url: str, commit: str, cache_root: Path) -> Path:
     elif not cache_path.is_dir():
         raise ValueError(f"pinned Anti cache path is not a directory: {cache_path}")
 
+    # Reject an existing dirty cache before fetch/checkout can alter it.  The
+    # final check below closes the path before a dirty checkout is returned.
+    _assert_clean(cache_path)
+
     # A commit-addressed path is never accepted merely because it exists.  The
     # object must be present and HEAD must be detached at the lock's exact SHA.
     object_check = _git(
@@ -170,6 +180,7 @@ def _clone_pinned(repo_url: str, commit: str, cache_root: Path) -> Path:
         raise ValueError(
             f"pinned Anti checkout is at {actual}, expected locked commit {commit}"
         )
+    _assert_clean(cache_path)
     return cache_path
 
 
@@ -185,6 +196,7 @@ def resolve_anti(
 
     cache_path = _clone_pinned(lock["repo_url"], lock["commit"], Path(cache_root))
     contract_version = _verify_contract(cache_path, lock["contract_version"])
+    _assert_clean(cache_path)
     return Resolution(cache_path, lock["commit"], "pinned", contract_version)
 
 
