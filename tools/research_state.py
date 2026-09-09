@@ -764,6 +764,14 @@ def _transition_run(state: dict, event: str) -> dict:
             raise InvalidTransition(
                 f"branches are not promotion-terminal: {not_promoted!r}"
             )
+        if not any(
+            branch.get("status")
+            in {"PROMOTABLE", "PROMOTABLE_WITH_OBLIGATIONS"}
+            for branch in branches.values()
+        ):
+            raise InvalidTransition(
+                "cannot synthesize when every branch is blocked or unresolved"
+            )
         state["status"] = event
         return state
     if event == "WRITE_READY":
