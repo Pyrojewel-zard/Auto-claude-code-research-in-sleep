@@ -23,12 +23,14 @@
 #   --uninstall      remove only entries in manifest; delete manifest
 #
 # Selection (catalog: tools/skill-groups.tsv in the aris-repo):
+#   --profile NAME          install the named skill profile (see --list-profiles)
 #   --groups A,B           install only these skill groups (see --list-groups)
 #   --skills X,Y           additionally install these skills (clears declined mark)
 #   --exclude X,Y          never install these skills (recorded as declined)
 #   --all                  install every upstream skill (legacy default)
 #   --add-new              reconcile: accept all upstream skills not yet installed
 #   --skip-new             reconcile: skip new upstream skills without prompting
+#   --list-profiles        print the profile catalog and exit
 #   --list-groups          print the group catalog and exit
 #   With no selection flags: fresh install on a TTY opens a full-screen
 #   checkbox picker (Space toggles a skill / a whole group, Enter confirms;
@@ -55,6 +57,7 @@ MANIFEST_NAME="installed-skills-codex.txt"
 MANIFEST_PREV_NAME="installed-skills-codex.txt.prev"
 DECLINED_NAME="skills-declined-codex.txt"
 CATALOG_REL="tools/skill-groups.tsv"
+PROFILE_CATALOG_REL="tools/skill-profiles.tsv"
 GLOBAL_POINTER="$HOME/.aris/repo"
 ARIS_DIR_NAME=".aris"
 LOCK_DIR_NAME=".install-codex.lock.d"
@@ -78,8 +81,10 @@ REPLACE_LINK_NAMES=()
 SELECT_GROUPS=""     # comma list from --groups
 SELECT_SKILLS=""     # comma list from --skills
 EXCLUDE_SKILLS=""    # comma list from --exclude
+PROFILE_NAME=""
 SELECT_ALL=false
 NEW_POLICY=""        # "" (prompt) | add | skip
+LIST_PROFILES=false
 LIST_GROUPS=false
 
 usage() { sed -n '2,49p' "$0" | sed 's/^# \?//'; }
@@ -96,12 +101,14 @@ while [[ $# -gt 0 ]]; do
         --no-doc) NO_DOC=true; shift ;;
         --replace-link) REPLACE_LINK_NAMES+=("${2:?--replace-link requires NAME}"); shift 2 ;;
         --clear-stale-lock) CLEAR_STALE_LOCK=true; shift ;;
+        --profile) PROFILE_NAME="${2:?--profile requires NAME}"; shift 2 ;;
         --groups) SELECT_GROUPS="${SELECT_GROUPS:+$SELECT_GROUPS,}${2:?--groups requires A,B,...}"; shift 2 ;;
         --skills) SELECT_SKILLS="${SELECT_SKILLS:+$SELECT_SKILLS,}${2:?--skills requires X,Y,...}"; shift 2 ;;
         --exclude) EXCLUDE_SKILLS="${EXCLUDE_SKILLS:+$EXCLUDE_SKILLS,}${2:?--exclude requires X,Y,...}"; shift 2 ;;
         --all) SELECT_ALL=true; shift ;;
         --add-new) NEW_POLICY="add"; shift ;;
         --skip-new) NEW_POLICY="skip"; shift ;;
+        --list-profiles) LIST_PROFILES=true; shift ;;
         --list-groups) LIST_GROUPS=true; shift ;;
         -h|--help) usage; exit 0 ;;
         --*) echo "Unknown option: $1" >&2; exit 2 ;;
@@ -117,8 +124,11 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-if $SELECT_ALL && [[ -n "$SELECT_GROUPS$SELECT_SKILLS" ]]; then
-    echo "Error: --all cannot be combined with --groups/--skills (only --exclude)" >&2; exit 2
+if [[ -n "$PROFILE_NAME" && -n "$SELECT_GROUPS" ]]; then
+    echo "Error: --profile cannot be combined with --groups (only --skills/--exclude)" >&2; exit 2
+fi
+if $SELECT_ALL && [[ -n "$SELECT_GROUPS$SELECT_SKILLS$PROFILE_NAME" ]]; then
+    echo "Error: --all cannot be combined with --profile/--groups/--skills (only --exclude)" >&2; exit 2
 fi
 
 log() { $QUIET && return 0; echo "$@"; }
@@ -533,12 +543,41 @@ LOCK_DIR="$PROJECT_ARIS_DIR/$LOCK_DIR_NAME"
 DOC_FILE="$PROJECT_PATH/$DOC_FILE_NAME"
 LEGACY_NESTED="$PROJECT_PATH/.agents/skills/aris"
 CATALOG_PATH="$ARIS_REPO/$CATALOG_REL"
+PROFILE_CATALOG_PATH="$ARIS_REPO/$PROFILE_CATALOG_REL"
 DECLINED_PATH="$PROJECT_ARIS_DIR/$DECLINED_NAME"
 
+profile_catalog_ok() { [[ -f "$PROFILE_CATALOG_PATH" ]]; }
+catalog_profiles() {
+    awk -F'\t' 'NF>=3 && $1!="" && $1 !~ /^#/ {print $1 "\t" $2 "\t" $3}' "$PROFILE_CATALOG_PATH"
+}
+profile_skills() {
+    awk -F'\t' -v p="$1" '$1==p {print $2; exit}' "$PROFILE_CATALOG_PATH"
+}
+print_profile_catalog() {
+    profile_catalog_ok || die "profile catalog not found: $PROFILE_CATALOG_PATH"
+    echo "Skill profiles (from $PROFILE_CATALOG_PATH):"
+    while IFS=$'\t' read -r name skills desc; do
+        printf "  %-24s %s — %s\n" "$name" "$skills" "$desc"
+    done < <(catalog_profiles)
+}
+apply_profile_selection() {
+    [[ -n "$PROFILE_NAME" ]] || return 0
+    profile_catalog_ok || die "profile catalog not found: $PROFILE_CATALOG_PATH"
+    local skills
+    skills="$(profile_skills "$PROFILE_NAME")"
+    [[ -n "$skills" ]] || die "unknown profile '$PROFILE_NAME' — run with --list-profiles to see valid profiles"
+    SELECT_SKILLS="$skills${SELECT_SKILLS:+,$SELECT_SKILLS}"
+}
+
+if $LIST_PROFILES; then
+    print_profile_catalog
+    exit 0
+fi
 if $LIST_GROUPS; then
     print_group_catalog
     exit 0
 fi
+apply_profile_selection
 
 check_no_symlinked_parents() {
     local p

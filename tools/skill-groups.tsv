@@ -32,6 +32,9 @@ group	paper-visuals	配图与展示	插图、示意图、海报、幻灯片与�
 group	submission	投稿与基金	返修 rebuttal、重投 pipeline、基金申请书
 group	patent	专利	发明构建、权利要求、实施例到各国格式的专利流水线
 group	meta-utils	元工具与杂项	skill 语料自优化、通知、面试准备等
+skill	research	ideation	-	Zotero-first topic/proposal research and branch synthesis
+skill	write	paper-core	-	Evidence-gated proposal and paper writing
+skill	audit	review-loop	-	Independent Anti-Autoresearch audit of frozen artifacts
 skill	arxiv	lit-search	-	arXiv 搜索/下载/入库
 skill	alphaxiv	lit-search	-	单篇论文快速解读(AlphaXiv 摘要)
 skill	deepxiv	lit-search	-	DeepXiv 渐进式论文阅读
@@ -75,7 +78,7 @@ skill	serverless-modal	experiments	-	Modal 无服务器 GPU
 skill	experiment-audit	experiments	-	实验诚实度审计(防假结果)
 skill	result-to-claim	experiments	-	结果能支撑什么 claim 的裁决
 skill	ablation-planner	experiments	-	消融实验规划
-skill	paper-writing	paper-core	paper-plan,paper-write,paper-compile,paper-figure,figure-spec,proof-checker,paper-claim-audit,citation-audit,auto-paper-improvement-loop,integrity-forensics,kill-argument	W3:从报告到投稿级 PDF 全流程
+skill	paper-writing	paper-core	-	W3:从报告到投稿级 PDF 全流程(legacy compatibility entry)
 skill	paper-plan	paper-core	-	论文大纲生成
 skill	paper-write	paper-core	-	按大纲逐节写 LaTeX
 skill	paper-compile	paper-core	-	LaTeX 编译修错出 PDF
@@ -100,7 +103,7 @@ skill	paper-talk	paper-visuals	paper-slides,slides-polish	演讲稿+幻灯一体
 skill	slides-polish	paper-visuals	-	幻灯片打磨
 skill	rebuttal	submission	render-html	W4:审稿意见解析与安全回复
 skill	resubmit-pipeline	submission	auto-paper-improvement-loop,proof-checker,paper-claim-audit,citation-audit,kill-argument,paper-compile,integrity-forensics	被拒后重投全流程
-skill	grant-proposal	submission	research-lit,novelty-check,research-review	基金申请书(NSFC/NSF/科研費等)
+skill	grant-proposal	submission	research,write	基金申请书(NSFC/NSF/科研費等)
 skill	patent-pipeline	patent	prior-art-search,patent-novelty-check,invention-structuring,claims-drafting,specification-writing,patent-review,jurisdiction-format	专利撰写全流程
 skill	invention-structuring	patent	-	粗 idea 结构化成发明披露
 skill	claims-drafting	patent	-	撰写权利要求书

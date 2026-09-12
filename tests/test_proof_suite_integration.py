@@ -32,10 +32,15 @@ def test_retired_checker_is_not_shipped() -> None:
 
 
 def test_existing_paper_workflows_keep_the_original_proof_checker() -> None:
-    for name in ("paper-writing", "auto-paper-improvement-loop", "resubmit-pipeline"):
+    for name in ("auto-paper-improvement-loop", "resubmit-pipeline"):
         text = read(MAIN / name / "SKILL.md")
         assert "/proof-checker" in text
         assert REMOVED_CHECKER not in text
+
+    compatibility = read(MAIN / "paper-writing" / "SKILL.md")
+    assert "/write" in compatibility
+    assert "/audit" in compatibility
+    assert REMOVED_CHECKER not in compatibility
 
 
 def test_optional_deepseek_audit_is_internalized() -> None:

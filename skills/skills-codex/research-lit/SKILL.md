@@ -27,8 +27,8 @@ canonical entry must still:
 Every query retains a terminal status of `SEARCHED`, `NO_HIT`, `UNVERIFIED`,
 `UNSEARCHABLE`, or `ERROR`. If Zotero is explicitly requested but not
 configured, record `ERROR` (or `UNSEARCHABLE` for an invalid query) and report
-that it is not configured; do not silently substitute another discovery
-source. The evidence matrix keeps `Draft claim`, `Query ID`, `Query status`,
+that it is not configured; do not silently substitute another discovery source.
+The evidence matrix keeps `Draft claim`, `Query ID`, `Query status`,
 `itemKey`, `Matched chunk`, `supports/contradicts/limits`, and `Verification
 status` fields.
 

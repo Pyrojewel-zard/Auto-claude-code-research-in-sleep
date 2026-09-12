@@ -16,12 +16,14 @@
 #   --uninstall      remove only entries in manifest; delete manifest
 #
 # Selection (catalog: tools/skill-groups.tsv):
+#   --profile NAME          install the named skill profile (see --list-profiles)
 #   --groups A,B           install only these skill groups (see --list-groups)
 #   --skills X,Y           additionally install these skills (clears declined mark)
 #   --exclude X,Y          never install these skills (recorded as declined)
 #   --all                  install every upstream skill (legacy default)
 #   --add-new              reconcile: accept all upstream skills not yet installed
 #   --skip-new             reconcile: skip new upstream skills without prompting
+#   --list-profiles        print the profile catalog and exit
 #   --list-groups          print the group catalog and exit
 #   With no selection flags: fresh install on a TTY opens a full-screen
 #   checkbox picker (Space toggles a skill / a whole group, Enter confirms;
@@ -84,6 +86,7 @@ MANIFEST_PREV_NAME="installed-skills.txt.prev"
 AGENT_MANIFEST_NAME="installed-agent-profiles.txt"
 DECLINED_NAME="skills-declined.txt"
 CATALOG_REL="tools/skill-groups.tsv"
+PROFILE_CATALOG_REL="tools/skill-profiles.tsv"
 GLOBAL_POINTER="$HOME/.aris/repo"
 ARIS_DIR_NAME=".aris"
 LOCK_DIR_NAME=".install.lock.d"
@@ -96,7 +99,10 @@ SUPPORT_NAMES=("shared-references")
 AGENT_PROFILES_SRC=".github/agents"  # Copilot agent profiles deployed alongside skills (F5)
 AGENT_PROFILES_OPT_OUT_NAME="agent-profiles-opt-out"  # #431: remembered --no-agent-profiles
 AGENT_PROFILES_FLAG=""  # "off" (--no-agent-profiles) | "on" (--agent-profiles) | "" (remembered choice)
-EXCLUDE_TOP_NAMES=("skills-codex" "skills-codex.bak")  # not skills, not symlinked
+# The legacy Anti checkout is intentionally preserved as an untracked
+# reference only; it is not an installable ARIS skill. The supported runtime
+# is the tracked vendor/anti-autoresearch snapshot.
+EXCLUDE_TOP_NAMES=("skills-codex" "skills-codex.bak" "anti-autoresearch-bundle")  # not skills, not symlinked
 
 # ─── Argument parsing ─────────────────────────────────────────────────────────
 PROJECT_PATH=""
@@ -113,8 +119,10 @@ REPLACE_LINK_NAMES=()
 SELECT_GROUPS=""     # comma list from --groups
 SELECT_SKILLS=""     # comma list from --skills
 EXCLUDE_SKILLS=""    # comma list from --exclude
+PROFILE_NAME=""
 SELECT_ALL=false
 NEW_POLICY=""        # "" (prompt) | add | skip
+LIST_PROFILES=false
 LIST_GROUPS=false
 
 usage() { sed -n '2,69p' "$0" | sed 's/^# \?//'; }
@@ -167,6 +175,7 @@ while [[ $# -gt 0 ]]; do
         --from-old)          FORWARDED_ARGS+=("$1"); FROM_OLD=true; CLAUDE_ONLY_FLAGS_USED+=("--from-old"); shift ;;
         --migrate-copy)      FORWARDED_ARGS+=("$1" "${2:?--migrate-copy requires keep-user|prefer-upstream}"); MIGRATE_COPY="$2"; CLAUDE_ONLY_FLAGS_USED+=("--migrate-copy"); shift 2 ;;
         --clear-stale-lock)  FORWARDED_ARGS+=("$1"); CLEAR_STALE_LOCK=true; shift ;;
+        --profile)           FORWARDED_ARGS+=("$1" "${2:?--profile requires NAME}"); PROFILE_NAME="$2"; shift 2 ;;
         --no-agent-profiles) FORWARDED_ARGS+=("$1"); AGENT_PROFILES_FLAG="off"; CLAUDE_ONLY_FLAGS_USED+=("--no-agent-profiles"); shift ;;
         --agent-profiles)    FORWARDED_ARGS+=("$1"); AGENT_PROFILES_FLAG="on"; CLAUDE_ONLY_FLAGS_USED+=("--agent-profiles"); shift ;;
         --adopt-existing)    FORWARDED_ARGS+=("$1" "${2:?--adopt-existing requires NAME}"); ADOPT_NAMES+=("$2"); CLAUDE_ONLY_FLAGS_USED+=("--adopt-existing"); shift 2 ;;
@@ -177,6 +186,7 @@ while [[ $# -gt 0 ]]; do
         --all)               FORWARDED_ARGS+=("$1"); SELECT_ALL=true; shift ;;
         --add-new)           FORWARDED_ARGS+=("$1"); NEW_POLICY="add"; shift ;;
         --skip-new)          FORWARDED_ARGS+=("$1"); NEW_POLICY="skip"; shift ;;
+        --list-profiles)     FORWARDED_ARGS+=("$1"); LIST_PROFILES=true; shift ;;
         --list-groups)       FORWARDED_ARGS+=("$1"); LIST_GROUPS=true; shift ;;
         --platform)
             PLATFORM_OVERRIDE="${2:?--platform requires codex|claude}"; shift 2 ;;
@@ -204,8 +214,11 @@ fi
 if [[ -n "$PLATFORM_OVERRIDE" && "$PLATFORM_OVERRIDE" != "codex" && "$PLATFORM_OVERRIDE" != "claude" ]]; then
     echo "Error: --platform must be codex or claude (got: $PLATFORM_OVERRIDE)" >&2; exit 2
 fi
-if $SELECT_ALL && [[ -n "$SELECT_GROUPS$SELECT_SKILLS" ]]; then
-    echo "Error: --all cannot be combined with --groups/--skills (only --exclude)" >&2; exit 2
+if [[ -n "$PROFILE_NAME" && -n "$SELECT_GROUPS" ]]; then
+    echo "Error: --profile cannot be combined with --groups (only --skills/--exclude)" >&2; exit 2
+fi
+if $SELECT_ALL && [[ -n "$SELECT_GROUPS$SELECT_SKILLS$PROFILE_NAME" ]]; then
+    echo "Error: --all cannot be combined with --profile/--groups/--skills (only --exclude)" >&2; exit 2
 fi
 
 # ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -659,12 +672,41 @@ AGENT_PROFILES_OPT_OUT_PATH="$PROJECT_ARIS_DIR/$AGENT_PROFILES_OPT_OUT_NAME"
 LOCK_DIR="$PROJECT_ARIS_DIR/$LOCK_DIR_NAME"
 DOC_FILE="$PROJECT_PATH/$DOC_FILE_NAME"
 CATALOG_PATH="$ARIS_REPO/$CATALOG_REL"
+PROFILE_CATALOG_PATH="$ARIS_REPO/$PROFILE_CATALOG_REL"
 DECLINED_PATH="$PROJECT_ARIS_DIR/$DECLINED_NAME"
 
+profile_catalog_ok() { [[ -f "$PROFILE_CATALOG_PATH" ]]; }
+catalog_profiles() {
+    awk -F'\t' 'NF>=3 && $1!="" && $1 !~ /^#/ {print $1 "\t" $2 "\t" $3}' "$PROFILE_CATALOG_PATH"
+}
+profile_skills() {
+    awk -F'\t' -v p="$1" '$1==p {print $2; exit}' "$PROFILE_CATALOG_PATH"
+}
+print_profile_catalog() {
+    profile_catalog_ok || die "profile catalog not found: $PROFILE_CATALOG_PATH"
+    echo "Skill profiles (from $PROFILE_CATALOG_PATH):"
+    while IFS=$'\t' read -r name skills desc; do
+        printf "  %-24s %s — %s\n" "$name" "$skills" "$desc"
+    done < <(catalog_profiles)
+}
+apply_profile_selection() {
+    [[ -n "$PROFILE_NAME" ]] || return 0
+    profile_catalog_ok || die "profile catalog not found: $PROFILE_CATALOG_PATH"
+    local skills
+    skills="$(profile_skills "$PROFILE_NAME")"
+    [[ -n "$skills" ]] || die "unknown profile '$PROFILE_NAME' — run with --list-profiles to see valid profiles"
+    SELECT_SKILLS="$skills${SELECT_SKILLS:+,$SELECT_SKILLS}"
+}
+
+if $LIST_PROFILES; then
+    print_profile_catalog
+    exit 0
+fi
 if $LIST_GROUPS; then
     print_group_catalog
     exit 0
 fi
+apply_profile_selection
 
 # ─── S9: refuse if .aris / .claude / .claude/skills is itself a symlink ───────
 # (.aris and .claude/skills may not exist yet — only check if present.)

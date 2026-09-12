@@ -1,0 +1,29 @@
+{
+  "mode": "proposal",
+  "branches": {
+    "supported": {
+      "status": "BRANCH_PLANNED",
+      "queries": {
+        "mechanism": {"status": "SEARCHED"},
+        "predecessors": {"status": "SEARCHED"},
+        "counter": {"status": "SEARCHED"},
+        "boundaries": {"status": "SEARCHED"}
+      },
+      "artifact_hashes": {"evidence": "supported-v1"},
+      "coverage_report": {"hash": "coverage-supported-v1", "gaps": []},
+      "load_bearing_claims": ["supported"]
+    },
+    "unsupported": {
+      "status": "BRANCH_PLANNED",
+      "queries": {
+        "mechanism": {"status": "SEARCHED"},
+        "predecessors": {"status": "SEARCHED"},
+        "counter": {"status": "SEARCHED"},
+        "boundaries": {"status": "SEARCHED"}
+      },
+      "artifact_hashes": {"evidence": "unsupported-v1"},
+      "coverage_report": {"hash": "coverage-unsupported-v1", "gaps": []},
+      "load_bearing_claims": ["unsupported"]
+    }
+  }
+}

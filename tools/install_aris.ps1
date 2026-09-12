@@ -17,10 +17,12 @@
     Selective install (catalog: tools\skill-groups.tsv in the ARIS repo):
       -Groups A,B     install only these skill groups (see -ListGroups)
       -Skills X,Y     additionally install these skills (clears declined mark)
+      -Profile NAME   install the named skill profile (see -ListProfiles)
       -Exclude X,Y    never install these skills (recorded as declined)
       -All            install every upstream skill (legacy default)
       -AddNew         reconcile: accept all upstream skills not yet installed
       -SkipNew        reconcile: skip new upstream skills without prompting
+      -ListProfiles   print the profile catalog and exit
       -ListGroups     print the group catalog and exit
       -Quiet          no prompts; non-interactive fallback for every decision
       With no selection flags: a fresh install on a real console walks an
@@ -37,6 +39,11 @@
 .PARAMETER Skills
     Comma-separated skill names to install on a fresh install, or re-enable
     (un-decline) on reconcile.
+
+.PARAMETER Profile
+    Named profile from tools\skill-profiles.tsv to install. It cannot be
+    combined with -All or -Groups; -Skills may add entries and -Exclude may
+    still prune the resulting selection.
 
 .PARAMETER Exclude
     Comma-separated skill names to never install; removed and recorded as
@@ -85,10 +92,12 @@ param(
     # Selective install (#366 parity with install_aris.sh).
     [string]$Groups = '',
     [string]$Skills = '',
+    [string]$Profile = '',
     [string]$Exclude = '',
     [switch]$All,
     [switch]$AddNew,
     [switch]$SkipNew,
+    [switch]$ListProfiles,
     [switch]$ListGroups,
     [switch]$Quiet,
 
@@ -103,14 +112,17 @@ $ManifestVersion = '1'
 $SafeNameRegex = '^[A-Za-z0-9][A-Za-z0-9._-]*$'
 $SupportNames = @('shared-references')
 $CatalogRel = 'tools/skill-groups.tsv'
+$ProfileCatalogRel = 'tools/skill-profiles.tsv'
 $GlobalPointerDir = Join-Path $HOME '.aris'
 $GlobalPointerPath = Join-Path $GlobalPointerDir 'repo'
 $script:LockDir = $null
 $script:LockAcquired = $false
 
 function Die {
-    param([string]$Message)
-    throw $Message
+    param([string]$Message, [int]$ExitCode = 1)
+    $exception = New-Object System.Exception($Message)
+    $exception.Data['ARISExitCode'] = $ExitCode
+    throw $exception
 }
 
 function Normalize-PathString {
@@ -415,6 +427,51 @@ function Load-Catalog {
     return $catalog
 }
 
+function Load-ProfileCatalog {
+    param([string]$Path)
+    $profiles = [pscustomobject]@{
+        Path = $Path
+        Exists = (Test-Path -LiteralPath $Path -PathType Leaf)
+        Entries = @{}
+    }
+    if (-not $profiles.Exists) { return $profiles }
+    foreach ($line in Get-Content -LiteralPath $Path -Encoding UTF8) {
+        if (-not $line -or $line.StartsWith('#')) { continue }
+        $fields = $line -split "`t", 3
+        if ($fields.Count -lt 3) { continue }
+        $name = $fields[0].Trim()
+        $skills = @(Get-CommaList $fields[1])
+        $description = $fields[2].Trim()
+        if (-not $name -or $skills.Count -eq 0 -or -not $description) { continue }
+        $profiles.Entries[$name] = [pscustomobject]@{
+            Skills = $skills
+            Description = $description
+        }
+    }
+    return $profiles
+}
+
+function Get-ProfileSkills {
+    param($Profiles, [string]$Name)
+    if (-not $Profiles.Exists) { Die "profile catalog not found: $($Profiles.Path)" }
+    if (-not $Profiles.Entries.ContainsKey($Name)) {
+        Die "unknown profile '$Name' -- run with -ListProfiles to see valid profiles"
+    }
+    $skills = @($Profiles.Entries[$Name].Skills)
+    if ($skills.Count -eq 0) { Die "profile '$Name' has no skills" }
+    return ,$skills
+}
+
+function Show-ProfileCatalog {
+    param($Profiles)
+    if (-not $Profiles.Exists) { Die "profile catalog not found: $($Profiles.Path)" }
+    Write-Host "Skill profiles (from $($Profiles.Path)):"
+    foreach ($name in @($Profiles.Entries.Keys | Sort-Object)) {
+        $entry = $Profiles.Entries[$name]
+        Write-Host ("  {0,-24} {1} - {2}" -f $name, ($entry.Skills -join ','), $entry.Description)
+    }
+}
+
 function Get-CatalogGroupIds { param($Catalog) return ,@($Catalog.Groups | ForEach-Object { $_.Id }) }
 
 function Get-CatalogSkillsInGroup {
@@ -567,7 +624,14 @@ function Read-InteractiveSelection {
 
 # Build the selected-skill set for this run.
 function Build-Selection {
-    param($Catalog, $Manifest, [System.Collections.Generic.HashSet[string]]$UpstreamSkillNames, [string]$DeclinedPath, [bool]$IsFresh)
+    param(
+        $Catalog,
+        $Manifest,
+        [System.Collections.Generic.HashSet[string]]$UpstreamSkillNames,
+        [string]$DeclinedPath,
+        [bool]$IsFresh,
+        [string[]]$ProfileSkills = @()
+    )
 
     $declinedCandidates = Read-DeclinedSet $DeclinedPath
     $excludeList = Get-CommaList $Exclude
@@ -578,7 +642,7 @@ function Build-Selection {
     }
 
     $groupsList = Get-CommaList $Groups
-    $skillsList = Get-CommaList $Skills
+    $skillsList = @(Get-CommaList $Skills) + @($ProfileSkills)
     Test-SelectionFlags $Catalog $groupsList $skillsList $UpstreamSkillNames
 
     $selected = New-Object System.Collections.Generic.HashSet[string]
@@ -1256,8 +1320,13 @@ function Invoke-Main {
     if ($Reconcile -and $Uninstall) {
         Die '-Reconcile and -Uninstall are mutually exclusive'
     }
-    if ($All -and (Get-CommaList $Groups).Count + (Get-CommaList $Skills).Count -gt 0) {
-        Die '-All cannot be combined with -Groups/-Skills (only -Exclude)'
+    $groupCount = (Get-CommaList $Groups).Count
+    $skillCount = (Get-CommaList $Skills).Count
+    if ($Profile -and ($groupCount -gt 0)) {
+        Die '-Profile cannot be combined with -Groups (only -Skills/-Exclude)' 2
+    }
+    if ($All -and ($groupCount + $skillCount + $(if ($Profile) { 1 } else { 0 }) -gt 0)) {
+        Die '-All cannot be combined with -Profile/-Groups/-Skills (only -Exclude)' 2
     }
     if (-not (Test-Path -LiteralPath $ProjectPath -PathType Container)) {
         Die "project path does not exist: $ProjectPath"
@@ -1265,10 +1334,17 @@ function Invoke-Main {
     $projectRoot = (Resolve-Path -LiteralPath $ProjectPath).ProviderPath
     $repoRoot = Resolve-ArisRepo
     $catalog = Load-Catalog (Join-RelativePath $repoRoot $CatalogRel)
+    $profileCatalog = Load-ProfileCatalog (Join-RelativePath $repoRoot $ProfileCatalogRel)
+    if ($ListProfiles) {
+        Show-ProfileCatalog $profileCatalog
+        return
+    }
     if ($ListGroups) {
         Show-GroupCatalog $catalog
         return
     }
+    $profileSkills = @()
+    if ($Profile) { $profileSkills = Get-ProfileSkills $profileCatalog $Profile }
     $selectedPlatform = $Platform
     if ($selectedPlatform -eq 'auto') {
         $selectedPlatform = Detect-Platform $projectRoot
@@ -1316,7 +1392,7 @@ function Invoke-Main {
     }
     $isFresh = -not (Test-Path -LiteralPath $manifestPath -PathType Leaf)
     $declinedPath = Join-Path $arisDir $config.DeclinedName
-    $selection = Build-Selection $catalog $manifest $upstreamSkillNames $declinedPath $isFresh
+    $selection = Build-Selection $catalog $manifest $upstreamSkillNames $declinedPath $isFresh $profileSkills
     $selectedInventory = @($inventory | Where-Object { $_.Kind -eq 'support' -or $selection.Selected.Contains($_.Name) })
     Write-Host ''
     Write-Host "Selection: $($selection.Selected.Count) of $($upstreamSkillNames.Count) upstream skills"
@@ -1365,7 +1441,8 @@ try {
     Invoke-Main
 } catch {
     Write-Error $_.Exception.Message
-    $exitCode = 1
+    $requestedExitCode = $_.Exception.Data['ARISExitCode']
+    $exitCode = if ($null -ne $requestedExitCode) { [int]$requestedExitCode } else { 1 }
 } finally {
     Release-Lock
 }

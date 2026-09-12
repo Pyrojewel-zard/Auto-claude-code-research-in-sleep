@@ -1,0 +1,12 @@
+[
+  {"event": "ZOTERO_RESEARCHING", "branch_id": "supported"},
+  {"event": "BRANCH_RESEARCHED", "branch_id": "supported"},
+  {"event": "COVERAGE_COMPLETE", "branch_id": "supported"},
+  {"event": "EVALUATE_BRANCH", "branch_id": "supported", "report": "reports/supported.json"},
+  {"event": "ZOTERO_RESEARCHING", "branch_id": "unsupported"},
+  {"event": "BRANCH_RESEARCHED", "branch_id": "unsupported"},
+  {"event": "COVERAGE_COMPLETE", "branch_id": "unsupported"},
+  {"event": "EVALUATE_BRANCH", "branch_id": "unsupported", "report": "reports/unsupported.json"},
+  {"event": "SYNTHESIZED"},
+  {"event": "WRITE_READY"}
+]

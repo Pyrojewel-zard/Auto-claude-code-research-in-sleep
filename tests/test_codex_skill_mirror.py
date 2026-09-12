@@ -14,6 +14,11 @@ MAIN_SKILLS = REPO_ROOT / "skills"
 CODEX_SKILLS = REPO_ROOT / "skills" / "skills-codex"
 CLAUDE_OVERLAY = REPO_ROOT / "skills" / "skills-codex-claude-review"
 GEMINI_OVERLAY = REPO_ROOT / "skills" / "skills-codex-gemini-review"
+# This is a preserved, untracked checkout of the standalone Anti project. It
+# is deliberately not part of ARIS's shipped skill inventory; the tracked
+# runtime lives under vendor/anti-autoresearch/.
+LEGACY_UNTRACKED_SKILLS = {"anti-autoresearch-bundle"}
+LEGACY_COMPATIBILITY_SKILLS = {"research-lit", "paper-writing"}
 
 
 def skill_names(root: Path) -> set[str]:
@@ -33,9 +38,9 @@ def has_send_input_block(text: str) -> bool:
 
 
 def test_codex_skill_set_matches_mainline() -> None:
-    main_names = skill_names(MAIN_SKILLS)
+    main_names = skill_names(MAIN_SKILLS) - LEGACY_UNTRACKED_SKILLS
     codex_names = skill_names(CODEX_SKILLS)
-    assert len(main_names) == 82
+    assert len(main_names) == 85
     assert main_names == codex_names
 
 
@@ -188,7 +193,7 @@ def test_codex_review_assurance_is_explicit_and_honest() -> None:
         "auto-review-loop", "research-review", "paper-writing", "render-html",
         "proof-checker", "paper-claim-audit", "citation-audit", "kill-argument",
         "experiment-audit", "result-to-claim", "meta-apply",
-    }
+    } - LEGACY_COMPATIBILITY_SKILLS
     for skill in provisional_skills:
         text = read(CODEX_SKILLS / skill / "SKILL.md")
         assert "provisional" in text, f"{skill} must document same-family provisional output"
@@ -291,7 +296,7 @@ def test_overlay_boundaries_are_exact() -> None:
 def test_non_degrading_skill_rules_are_documented() -> None:
     checks = {
         "comm-lit-review": "Do not silently downgrade",
-        "research-lit": "stop and ask the user to configure",
+        "research-lit": "do not silently substitute another discovery source",
         "paper-poster-html": "Do not silently degrade",
         "pixel-art": "Do not silently downgrade",
     }
@@ -407,10 +412,11 @@ def test_codex_high_risk_skills_preserve_claude_semantics() -> None:
             "Review Tracing",
             "oracle-pro",
         ],
-        "research-lit": [
-            "semantic-scholar",
-            "Semantic Scholar API search",
-            "semantic_scholar_fetch.py",
+        "research": [
+            "mcp__zotero_mcp__semantic_search",
+            "one alias retry once",
+            "NO_HIT",
+            "fresh isolated Codex",
         ],
         "arxiv": [
             "Update Research Wiki",
@@ -446,13 +452,12 @@ def test_codex_medium_risk_skills_preserve_claude_semantics() -> None:
             "RESEARCH_BRIEF.md",
             "Research Brief",
         ],
-        "paper-writing": [
-            "Architecture & Illustration Generation",
-            "Submission pre-flight checklist",
-            "Invoking the four audits",
-            "Running the verifier",
-            "Optional hardening",
-            "assurance-contract.md",
+        "write": [
+            "PROMOTABLE",
+            "WRITING_CLAIMS.md",
+            "WRITING_LIMITATIONS.md",
+            "submission-freeze/",
+            "fresh isolated Codex",
         ],
         "deepxiv": [
             "Semantic Scholar",
@@ -486,10 +491,8 @@ def test_codex_medium_risk_skills_preserve_claude_semantics() -> None:
 def test_codex_optional_helpers_are_guarded() -> None:
     checks = {
         "research-lit": [
-            'if [ -n "$DEEPXIV_FETCHER" ]; then',
-            'if [ -n "$EXA_FETCHER" ]; then',
-            'echo "DeepXiv unavailable',
-            'echo "Exa unavailable',
+            "mcp__zotero_mcp__semantic_search",
+            "do not silently substitute another discovery source",
         ],
         "deepxiv": [
             '[ -n "$DEEPXIV_FETCHER" ] && python3 "$DEEPXIV_FETCHER"',
@@ -520,13 +523,15 @@ def test_codex_training_check_defaults_to_interactive_watch() -> None:
 def test_codex_skill_instructions_use_codex_paths() -> None:
     auto_paper = read(CODEX_SKILLS / "auto-paper-improvement-loop" / "SKILL.md")
     paper_writing = read(CODEX_SKILLS / "paper-writing" / "SKILL.md")
+    write = read(CODEX_SKILLS / "write" / "SKILL.md")
     figure_spec = read(CODEX_SKILLS / "figure-spec" / "SKILL.md")
     meta_optimize = read(CODEX_SKILLS / "meta-optimize" / "SKILL.md")
 
     assert "~/.codex/feishu.json" in auto_paper
     assert "~/.claude/feishu.json" not in auto_paper
-    assert ".aris/installed-skills-codex.txt" in paper_writing
-    assert ".agents/skills/paper-writing" in paper_writing
+    assert "skills/skills-codex/write/SKILL.md" in paper_writing
+    assert "/write" in paper_writing
+    assert ".aris/installed-skills-codex.txt" not in write
     assert "~/.claude/skills/paper-writing/SKILL.md" not in paper_writing
     assert "~/.claude/settings.json" not in paper_writing
     assert 'python3 "$FIGURE_RENDERER"' in figure_spec

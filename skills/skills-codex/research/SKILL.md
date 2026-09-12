@@ -1,6 +1,6 @@
 ---
 name: research
-description: "Canonical Zotero-first Codex research for topics and proposal drafts."
+description: Use when researching a topic or proposal draft with Zotero semantic search and ARIS branch gates.
 ---
 
 # Canonical Codex Research Entry
@@ -243,8 +243,8 @@ Immediately after `BRANCH_RESEARCHED`, freeze the query pack, evidence matrix,
 coverage report, and their artifact hashes. The branch audit is therefore
 **after `BRANCH_RESEARCHED`**, never before it and never during autoresearch.
 
-Run a lightweight evidence audit over that frozen package in a fresh isolated
-Codex reviewer context. Use an isolated `spawn_agent`/reviewer invocation with
+Run a lightweight evidence audit over that frozen package in a fresh isolated Codex
+reviewer context. Use an isolated `spawn_agent`/reviewer invocation with
 only the frozen branch files and the audit rubric; do not pass the active
 author's transcript, hidden notes, or mutable workspace. The active author
 cannot self-audit or issue its own audit verdict. The reviewer checks claim

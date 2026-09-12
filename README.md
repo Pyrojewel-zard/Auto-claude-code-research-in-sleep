@@ -1,5 +1,24 @@
 # Auto-claude-code-research-in-sleep (ARIS ⚔️🌙)
 
+## Start here: the reduced ARIS flow
+
+```text
+/research  ->  /write  ->  /audit
+```
+
+For the daily Codex surface, install the minimal profile:
+
+```bash
+bash tools/install_aris_codex.sh /path/to/project --profile pyrojewel-research
+```
+
+`/research` accepts a topic or an existing proposal draft, searches Zotero
+through semantic search, splits independent branches, and audits each complete
+branch before promotion. `/write` consumes promoted evidence only. `/audit`
+runs the Anti-Autoresearch engine vendored in ARIS on frozen artifacts with a
+fresh isolated Codex reviewer. The broader legacy catalog remains available
+but is outside this profile.
+
 <p align="center">
   <a href="https://huggingface.co/papers/2605.03042">
     <img src="docs/hf_daily_paper_1.svg" alt="Hugging Face Daily Paper · #1 Paper of the Day" width="360">
@@ -10,7 +29,7 @@
 
 💡 *Use ARIS as a skill-based workflow in [Claude Code](https://docs.anthropic.com/en/docs/claude-code) / [Codex CLI](skills/skills-codex/) / [Cursor](docs/CURSOR_ADAPTATION.md) / [Trae](docs/TRAE_ARIS_RUNBOOK_EN.md) / [Antigravity](docs/ANTIGRAVITY_ADAPTATION.md) / [GitHub Copilot CLI](docs/COPILOT_CLI_ADAPTATION.md) / [OpenClaw](docs/OPENCLAW_ADAPTATION.md) / [DeepSeek Harness](https://github.com/Pyrojewel-zard/Auto-claude-code-research-in-sleep/tree/dsh-aris#readme), or get the full experience with the standalone **[ARIS-Code](docs/ARIS-Code-README_EN.md)** CLI — enjoy any way you like!*
 
-🐋 **On DeepSeek Harness it installs as one plugin:** `dsh plugin --profile web add dsh-aris` (fetches from npm by itself — no separate install step, but `pnpm` must be on `PATH`) — all 82 skills unchanged, Codex still the independent reviewer. Setup and limits on the [`dsh-aris` branch](https://github.com/Pyrojewel-zard/Auto-claude-code-research-in-sleep/tree/dsh-aris#readme).
+🐋 **On DeepSeek Harness it installs as one plugin:** `dsh plugin --profile web add dsh-aris` (fetches from npm by itself — no separate install step, but `pnpm` must be on `PATH`) — all 85 shipped skills unchanged, Codex still the independent reviewer. Setup and limits on the [`dsh-aris` branch](https://github.com/Pyrojewel-zard/Auto-claude-code-research-in-sleep/tree/dsh-aris#readme).
 
 🌱 *ARIS is a methodology, not a platform. What matters is the research workflow — take it wherever you go.*
 
@@ -432,7 +451,7 @@ Two outputs: `PASTE_READY.txt` (exact char count, paste to venue) + `REBUTTAL_DR
 git clone https://github.com/Pyrojewel-zard/Auto-claude-code-research-in-sleep.git
 bash Auto-claude-code-research-in-sleep/tools/install_aris.sh ~/your-project   # symlinks ARIS skills into <project>/.claude/skills/
 # (prefer a global install instead? cp -r Auto-claude-code-research-in-sleep/skills/* ~/.claude/skills/)
-# (don't need all 82? --list-groups / --groups X,Y / --skills X — see "Selective install" below)
+# (don't need all 85? --list-groups / --groups X,Y / --skills X / --profile pyrojewel-research — see "Selective install" below)
 
 # 1b. Update later (when upstream changes)
 cd Auto-claude-code-research-in-sleep && git pull
@@ -469,7 +488,7 @@ claude
 > /meta-optimize                                # Meta: analyze usage logs → propose skill improvements
 ```
 
-> Don't need all 82 skills? See [Selective install](#install-skills) below for group/skill-level picks.
+> Don't need all 85 skills? See [Selective install](#install-skills) below for group, skill, or profile-level picks.
 
 <details>
 <summary><b>📚 Research Wiki (optional)</b> — one-line init for persistent memory across sessions; see <a href="#-research-wiki--persistent-research-memory">full Research Wiki section</a></summary>
@@ -617,14 +636,14 @@ See [full setup guide](#setup) for details and [alternative model combinations](
 
 ## 4. ✨ Features
 
-ARIS chains **82 composable skills** across the whole research lifecycle — literature & novelty → idea discovery → GPU experiments → autonomous review loop → paper writing → peer review — with **cross-model adversarial review** (Claude executes · GPT-6-Astra xhigh reviews · optional **GPT-5.5 Pro** via Oracle), anti-hallucination DBLP/CrossRef citations, a persistent **Research Wiki**, flexible model backends, human-in-the-loop checkpoints, and optional Feishu / Zotero / Obsidian / GPU integrations.
+ARIS ships **85 composable skills** across the whole research lifecycle. The reduced default path is `/research` → `/write` → `/audit`: Zotero semantic search supplies the literature evidence, promoted branches constrain the draft, and a vendored Anti-Autoresearch engine plus a fresh isolated Codex review audits the frozen output. The remaining skills stay available for legacy and domain-specific workflows.
 
 🔥 *And it scales to any agent's **ultracode-style deep mode** — the breadth/firepower pass adapts to the runtime (Claude Code ultracode + workflows on Opus 4.8, Codex `spawn_agent`, or plain sequential), feeding three roles: **breadth · cross-model review → accuracy · research wiki → memory**. However a loop is driven, it reports to the same cross-model jury + research wiki — **it can drive, never acquit**.*
 
 <details>
 <summary><b>Full feature list</b></summary>
 
-- 📊 **82 composable skills** — mix and match, or chain into full pipelines (`/idea-discovery`, `/auto-review-loop`, `/paper-writing`, `/research-pipeline`). See [full catalog →](docs/SKILLS_CATALOG.md)
+- 📊 **85 composable skills** — the default reduced profile is `pyrojewel-research` (`/research`, `/write`, `/audit`); legacy and domain-specific skills remain available in the [full catalog →](docs/SKILLS_CATALOG.md)
 - 🔍 **Literature & novelty** — multi-source paper search (**[Zotero](docs/integrations/ZOTERO.md)** + **[Obsidian](docs/integrations/OBSIDIAN.md)** + **local PDFs** + arXiv/Scholar) + cross-model novelty verification
 - 💡 **Idea discovery** — literature survey → brainstorm 8-12 ideas → novelty check → GPU pilot experiments → ranked report
 - 🔄 **Auto review loop** — 4-round autonomous review, 5/10 → 7.5/10 overnight with 20+ GPU experiments
@@ -657,7 +676,7 @@ ARIS chains **82 composable skills** across the whole research lifecycle — lit
 <a id="skills-catalog"></a>
 <a id="-skills-catalog"></a>
 
-ARIS ships **82+ skills** across literature, ideation, experiments, audit, writing, talks, patents, and meta-utilities — the full catalog (role / category / requirements per skill) lives in **[`docs/SKILLS_CATALOG.md`](docs/SKILLS_CATALOG.md)** to keep this README scannable.
+ARIS ships **85+ skills** across literature, ideation, experiments, audit, writing, talks, patents, and meta-utilities — the full catalog (role / category / requirements per skill) lives in **[`docs/SKILLS_CATALOG.md`](docs/SKILLS_CATALOG.md)** to keep this README scannable.
 
 <details>
 <summary><b>Start here</b> — common entry points (use case → skill)</summary>
@@ -678,7 +697,7 @@ ARIS ships **82+ skills** across literature, ideation, experiments, audit, writi
 
 </details>
 
-→ **[Browse all 82 skills by category in the full catalog →](docs/SKILLS_CATALOG.md)**
+→ **[Browse all 85 skills by category in the full catalog →](docs/SKILLS_CATALOG.md)**
 
 ---
 

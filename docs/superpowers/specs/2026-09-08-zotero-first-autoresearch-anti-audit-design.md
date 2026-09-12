@@ -27,7 +27,9 @@ loop from certifying its own evidence and conclusions.
 7. Run full Anti-Autoresearch on frozen paper, code, result, or submission
    artifacts.
 8. Make Codex canonical and isolate reviewer context from authoring context.
-9. Keep Anti-Autoresearch independently versioned behind a tested adapter.
+9. Integrate the reviewed Anti-Autoresearch implementation into ARIS as an
+   ARIS-owned vendored audit engine, behind a tested adapter and provenance
+   record.
 10. Defer physical catalog deletion until the reduced flow is validated.
 
 ## Non-Goals
@@ -36,7 +38,8 @@ loop from certifying its own evidence and conclusions.
 - Run full forensics after every query or branch iteration.
 - Interpret a Zotero no-hit as proof that no prior work exists.
 - Let an LLM issue the final integrity verdict.
-- Maintain a third vendored copy of Anti-Autoresearch.
+- Push or maintain a separate Anti-Autoresearch repository as a runtime
+  dependency; ARIS owns the integrated snapshot used by its profile.
 - Preserve first-release parity with all Claude, Copilot, and reviewer overlays.
 - Delete the legacy catalog before real-use validation.
 
@@ -167,7 +170,10 @@ Remediation points to changed evidence, a corrected claim, or a human waiver.
 
 ## Anti-Autoresearch Ownership
 
-Anti-Autoresearch remains an independent upstream and owns:
+The Anti-Autoresearch project remains the provenance source and upstream
+reference. ARIS vendors the reviewed implementation under
+`vendor/anti-autoresearch/` and owns the integrated runtime copy. The Anti
+implementation owns:
 
 - evidence-ledger schemas and extraction;
 - observability and finding contracts;
@@ -183,14 +189,18 @@ ARIS owns:
 - evidence freezing and the Anti adapter;
 - branch promotion, obligations, and writing gates.
 
-Development may resolve Anti from a local checkout through ARIS_ANTI_REPO.
-Distribution reads one repository URL and commit from a version-lock file, runs
-the upstream eval, and invokes that pinned workflow. A local checkout reports
-its commit and fails on contract mismatch.
+The ARIS lock records the original repository URL, exact tested commit, and
+contract version as provenance. Normal runtime resolution reads the vendored
+tree, runs its local eval, and invokes that snapshot without cloning or fetching
+another repository. A local external checkout is permitted only as an explicit
+development source for updating the vendor and must pass the same contract and
+eval checks; it is never a distribution dependency.
 
-The untracked anti-autoresearch-bundle is not a runtime dependency and must not
-become a third maintained copy. Removing it is an explicit implementation-time
-cleanup. Anti upstream is updated and tested before ARIS pins the release.
+The pre-existing untracked `skills/anti-autoresearch-bundle` is not the runtime
+copy and must remain outside commits unless separately reviewed. The tracked
+`vendor/anti-autoresearch/` tree is the single ARIS-integrated snapshot; its
+provenance lock and import test prevent silent drift. Updating it requires
+re-running the vendored eval and ARIS adapter tests.
 
 ## Codex-Primary Review
 
@@ -249,29 +259,29 @@ Contract tests verify the profile closure, Zotero default, terminal query
 states, provenance, expansion authorization, and writing gate.
 
 Deterministic tests cover gap classification, promotion, append-only
-obligations and waivers, Anti version resolution, and finding validation.
+obligations and waivers, vendored Anti resolution/provenance, and finding
+validation.
 
 Integration fixtures cover complete and incomplete Zotero searches, declined
 and authorized expansion, proposal decomposition, partial branch failure,
-local and pinned Anti resolution, and frozen-artifact full audit.
+vendored Anti resolution, and frozen-artifact full audit.
 
 Existing selective-install tests remain green. Anti upstream eval must pass
 before accepting a pin. Live Web access is never required by default.
 
 ## Delivery Sequence
 
-1. Add the lightweight evidence-audit contract and fixtures upstream in
-   Anti-Autoresearch.
-2. Commit and push a tested Anti release commit.
-3. Add the ARIS version lock and local-development resolver.
-4. Refactor research around topic and proposal modes.
-5. Replace broad retrieval with Zotero-first query and coverage contracts.
-6. Add branch audit, promotion, and obligations.
-7. Refactor writing to consume promoted evidence.
-8. Add the full audit adapter and frozen-artifact checkpoint.
-9. Add the minimal Codex-first profile and installer tests.
-10. Update documentation and run end-to-end fixtures.
-11. Validate real use before proposing physical deletion.
+1. Add the lightweight evidence-audit contract and fixtures to the Anti source.
+2. Import the tested Anti release into the ARIS vendor tree and record
+   provenance; no separate Anti push is required.
+3. Refactor research around topic and proposal modes.
+4. Replace broad retrieval with Zotero-first query and coverage contracts.
+5. Add branch audit, promotion, and obligations.
+6. Refactor writing to consume promoted evidence.
+7. Add the full vendored Anti adapter and frozen-artifact checkpoint.
+8. Add the minimal Codex-first profile and installer tests.
+9. Update documentation and run end-to-end fixtures.
+10. Validate real use before proposing physical deletion.
 
 ## Acceptance Criteria
 
@@ -281,8 +291,9 @@ before accepting a pin. Live Web access is never required by default.
 - Branch autoresearch finishes before audit gating.
 - Hard findings cannot silently enter writing.
 - Soft findings remain visible without freezing the whole project.
-- Full audit uses a tested Anti upstream version.
+- Full audit uses the tested ARIS-vendored Anti snapshot with recorded upstream
+  provenance.
 - Reviewer context is isolated from authoring context.
 - The default installation exposes three public entries.
 - Legacy workflows are outside the minimal dependency closure.
-- No vendored third Anti copy is required.
+- No separate Anti repository is required at runtime or for ARIS delivery.

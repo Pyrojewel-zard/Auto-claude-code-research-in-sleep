@@ -38,10 +38,14 @@ author's draft to make a detector quiet.
    reviewer is read-only with respect to the frozen artifact and must not
    inherit the active author conversation. Never use an in-context follow-up
    as if it were independent; `same-context` is fail closed.
-4. Fold the report through `tools/forensics_gate.py` in one atomic call:
+4. Resolve the installed ARIS repository and fold the report through its
+   `tools/forensics_gate.py` in one atomic call. Do not assume the user's
+   project contains ARIS helper scripts:
 
    ```bash
-   python3 tools/forensics_gate.py evaluate \
+   ARIS_REPO="$(readlink -f "$HOME/.aris/repo")"
+   FORENSICS_GATE="$ARIS_REPO/tools/forensics_gate.py"
+   python3 "$FORENSICS_GATE" evaluate \
      --report FROZEN/report.json --paper-dir FROZEN \
      --anti-ar-commit LOCKED_SHA --executor-model codex \
      --reviewer-model codex
@@ -63,4 +67,3 @@ the frozen-input hashes match, the upstream report and ARIS gate exist, the
 review provenance says `cross-family`, `same-family-isolated`, or an explicit
 blocked state, and open obligations are visible. An unavailable reviewer is
 an honest blocked result, never a clean result.
-

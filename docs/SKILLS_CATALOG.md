@@ -1,6 +1,6 @@
 # ARIS Skills Catalog
 
-Every skill that ships with ARIS, grouped by role. **82 skills** as of the
+Every skill that ships with ARIS, grouped by role. **85 skills** as of the
 latest update; new skills land via PR and get added to the table below.
 
 - Each `Skill` link goes to the canonical `SKILL.md` (the LLM-readable spec).
@@ -31,7 +31,7 @@ End-to-end pipelines that chain many sub-skills. Most users start here.
 | [`/auto-review-loop`](../skills/auto-review-loop/SKILL.md) | **Workflow 2** — autonomous review → fix → re-review until positive or max rounds; uses Codex MCP reviewer | Codex MCP |
 | [`/auto-review-loop-llm`](../skills/auto-review-loop-llm/SKILL.md) | Same as Workflow 2 but uses any OpenAI-compatible LLM via [`llm-chat`](../mcp-servers/llm-chat/) MCP server | llm-chat MCP |
 | [`/auto-review-loop-minimax`](../skills/auto-review-loop-minimax/SKILL.md) | Workflow 2 variant pinned to MiniMax API | MiniMax API key |
-| [`/paper-writing`](../skills/paper-writing/SKILL.md) | **Workflow 3** — paper-plan → paper-figure → illustration → paper-write → paper-compile → auto-paper-improvement-loop | Codex MCP, LaTeX |
+| [`/paper-writing`](../skills/paper-writing/SKILL.md) | Legacy compatibility entry for the historical paper pipeline; new evidence-gated authoring uses `/write` | — |
 | [`/rebuttal`](../skills/rebuttal/SKILL.md) | **Workflow 4** — parse reviews → atomize → strategy → draft → safety check → stress test → 2-version output → follow-ups | Codex MCP |
 | [`/resubmit-pipeline`](../skills/resubmit-pipeline/SKILL.md) | **Workflow 5** — text-only port across venues (no new experiments, no bib edits) — isolation → anonymity → audits `--soft-only` → microedit → kill-argument gate → compile + push | Codex MCP, LaTeX |
 | [`/paper-talk`](../skills/paper-talk/SKILL.md) | **Workflow 6** — paper → slide outline → Beamer + PPTX → per-page polish → assurance audits → final report | Codex MCP, LaTeX, python-pptx |
@@ -47,7 +47,8 @@ Paper retrieval, summarization, novelty verification.
 
 | Skill | Role | Requires |
 |---|---|---|
-| [`/research-lit`](../skills/research-lit/SKILL.md) | Multi-source literature search — Zotero / Obsidian / local PDFs / web / arXiv / S2 / DeepXiv / Exa / Gemini / OpenAlex with cross-source dedup | None (sources gated by MCP / SDK availability) |
+| [`/research`](../skills/research/SKILL.md) | Canonical Zotero-first topic/proposal research — independent branches, semantic retrieval, coverage, promotion, and synthesis | Zotero MCP |
+| [`/research-lit`](../skills/research-lit/SKILL.md) | Legacy compatibility entry that forwards topic research to `/research`; no second multi-source pipeline | Zotero MCP |
 | [`/arxiv`](../skills/arxiv/SKILL.md) | Search, download, summarize arXiv papers; multi-result table + per-paper detail | None |
 | [`/semantic-scholar`](../skills/semantic-scholar/SKILL.md) | Published-venue paper search (IEEE / ACM / Springer) — citation counts, venue metadata, TLDR | None (rate-limited without S2 API key) |
 | [`/deepxiv`](../skills/deepxiv/SKILL.md) | Progressive paper reading — search → brief → head → section → trending → web search | `pip install deepxiv-sdk` |
@@ -108,7 +109,8 @@ Cross-model critique, integrity checking, evidence verification.
 | [`/citation-audit`](../skills/citation-audit/SKILL.md) | Bibliography audit — existence + metadata correctness + context appropriateness for every `\cite{}`; `--soft-only` mode for frozen-bib resubmits | Codex MCP, web access |
 | [`/proof-checker`](../skills/proof-checker/SKILL.md) | Rigorous mathematical proof verification — 20-category issue taxonomy, two-axis severity, side-condition checklists, counterexample red team, proof-obligation ledger | Codex MCP |
 | [`/kill-argument`](../skills/kill-argument/SKILL.md) | Two-thread adversarial review — Thread 1 writes the strongest 200-word rejection memo; Thread 2 (independent) defends point-by-point and surfaces still-unresolved issues | Codex MCP |
-| [`/integrity-forensics`](../skills/integrity-forensics/SKILL.md) | SHA-pinned thin launcher for [Anti-Autoresearch](https://github.com/wanshuiyin/Anti-Autoresearch) — evidence-ledger forensic sweep (46 patterns, deterministic adjudicator) → typed BLOCK/WARN/NO_NEW_BLOCKER gate + append-only obligations ledger; default pre-submission self-audit in `/paper-writing` | git, Codex MCP (via upstream) |
+| [`/audit`](../skills/audit/SKILL.md) | ARIS-owned Anti-Autoresearch audit of frozen research, proposal, paper, code, or results artifacts with fresh isolated Codex review | Vendored Anti snapshot |
+| [`/integrity-forensics`](../skills/integrity-forensics/SKILL.md) | Legacy compatibility entry for the ARIS-owned Anti-Autoresearch audit engine; new work uses `/audit` | Vendored Anti snapshot |
 
 ## 📝 Paper Writing & Figures
 
@@ -116,6 +118,7 @@ LaTeX generation, figure / diagram production, prose polishing.
 
 | Skill | Role | Requires |
 |---|---|---|
+| [`/write`](../skills/write/SKILL.md) | Evidence-gated proposal or paper writing from promoted branches, with claim map, limitations, freeze, and `/audit` handoff | Zotero-derived research state |
 | [`/paper-plan`](../skills/paper-plan/SKILL.md) | Generate a structured paper outline from review conclusions + experiment results — claims-evidence matrix, section structure, figure plan, citation scaffolding | None |
 | [`/paper-write`](../skills/paper-write/SKILL.md) | Section-by-section LaTeX generation (ICLR / NeurIPS / ICML / IEEE / ACL / AAAI / CVPR / ACM MM). Anti-hallucination BibTeX via DBLP / CrossRef | None |
 | [`/paper-figure`](../skills/paper-figure/SKILL.md) | Publication-quality matplotlib / seaborn plots + LaTeX comparison tables from experiment results | matplotlib / seaborn |

@@ -1,116 +1,42 @@
-# Codex + Claude Reviewer Guide
+# Codex review guide
 
-Run ARIS with:
+The reduced ARIS workflow is Codex-primary:
 
-- **Codex** as the main executor
-- **Claude Code CLI** as the reviewer
-- the local `claude-review` MCP bridge as the transport layer
-
-This guide is **additive** to the upstream Codex-native path. It does not replace `skills/skills-codex/`.
-
-## Architecture
-
-- Base skill set: `skills/skills-codex/`
-- Reviewer override layer: `skills/skills-codex-claude-review/`
-- Reviewer bridge: `mcp-servers/claude-review/`
-
-The install order matters:
-
-1. install `skills/skills-codex/*`
-2. install `skills/skills-codex-claude-review/*`
-3. register `claude-review` MCP
-
-## Install
-
-```bash
-git clone https://github.com/Pyrojewel-zard/Auto-claude-code-research-in-sleep.git
-cd Auto-claude-code-research-in-sleep
-
-mkdir -p ~/.codex/skills
-cp -a skills/skills-codex/* ~/.codex/skills/
-cp -a skills/skills-codex-claude-review/* ~/.codex/skills/
-
-mkdir -p ~/.codex/mcp-servers/claude-review
-cp mcp-servers/claude-review/server.py ~/.codex/mcp-servers/claude-review/server.py
-codex mcp add claude-review -- python3 ~/.codex/mcp-servers/claude-review/server.py
+```text
+/research -> /write -> /audit
 ```
 
-If your Claude login depends on a shell helper such as `claude-aws`, use the wrapper:
+The active Codex context owns orchestration and writing. Review is a separate,
+fresh isolated Codex context with read-only access to frozen artifacts. The
+authoring context never supplies its own Anti-Autoresearch verdict.
+
+## Install the minimal surface
 
 ```bash
-cp mcp-servers/claude-review/run_with_claude_aws.sh ~/.codex/mcp-servers/claude-review/run_with_claude_aws.sh
-chmod +x ~/.codex/mcp-servers/claude-review/run_with_claude_aws.sh
-codex mcp add claude-review -- ~/.codex/mcp-servers/claude-review/run_with_claude_aws.sh
+bash tools/install_aris_codex.sh /path/to/project --profile pyrojewel-research
 ```
 
-Optional reviewer model override:
+This installs `research`, `write`, and `audit`; it does not select broad search,
+experiment, or legacy paper-pipeline skills. The old catalog and optional
+Claude/Gemini overlays remain available for unrelated workflows, but are not
+part of the profile.
 
-```bash
-codex mcp remove claude-review
-codex mcp add claude-review --env CLAUDE_REVIEW_MODEL=claude-opus-4-1 -- python3 ~/.codex/mcp-servers/claude-review/server.py
-```
+## Review boundary
 
-## Verify
+`/research` uses Zotero semantic search as its automatic literature source and
+runs a lightweight branch audit after a complete branch. `/write` accepts only
+`PROMOTABLE` or `PROMOTABLE_WITH_OBLIGATIONS` evidence. `/audit` freezes the
+final source/results package, resolves the Anti engine from
+`vendor/anti-autoresearch/` and `tools/anti-autoresearch.lock.json`, runs the
+vendored eval, and folds the report through `tools/forensics_gate.py`.
 
-1. Check MCP registration:
+The gate preserves `CLEAN_GIVEN_EVIDENCE`, `SOFT_FLAGS`, `HARD_FLAGS`, and
+`REVIEW_UNAVAILABLE` verbatim. A same-family isolated reviewer is labeled
+`same-family-isolated`; a same-context reviewer is `same-context` and blocks.
 
-```bash
-codex mcp list
-```
+## Optional cross-family review
 
-2. Check Claude CLI login:
-
-```bash
-claude -p "Reply with exactly READY" --output-format json --tools ""
-```
-
-3. Start Codex in your project:
-
-```bash
-codex -C /path/to/your/project
-```
-
-## What gets overridden
-
-The overlay only replaces review-heavy skills:
-
-- `research-review`
-- `novelty-check`
-- `research-refine`
-- `auto-review-loop`
-- `paper-plan`
-- `paper-figure`
-- `paper-write`
-- `auto-paper-improvement-loop`
-
-Everything else still comes from the upstream `skills/skills-codex/` package.
-
-## Async reviewer flow
-
-For long paper or project reviews, use:
-
-- `review_start`
-- `review_reply_start`
-- `review_status`
-
-Why: in this host path, the review hop is:
-
-`Codex -> claude-review MCP -> local Claude CLI -> Claude backend`
-
-That extra local CLI hop is what makes long synchronous reviewer calls more likely to hit the observed Codex-hosted MCP timeout.
-
-## Project config
-
-No special project config file is required for this path.
-
-- keep using your existing `CLAUDE.md`
-- keep your current project layout
-- only switch the installed Codex skill files and MCP registration
-
-## Maintenance
-
-Regenerate the overlay package with:
-
-```bash
-python3 tools/generate_codex_claude_review_overrides.py
-```
+If a separate Claude reviewer is required by a venue or local policy, use the
+existing `skills-codex-claude-review` overlay as an explicit add-on and record
+its provenance. It is not needed for the default ARIS profile and must not be
+used to bypass the frozen-artifact gate.

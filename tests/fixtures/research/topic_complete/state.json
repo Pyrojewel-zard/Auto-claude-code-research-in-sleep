@@ -1,0 +1,17 @@
+{
+  "mode": "topic",
+  "branches": {
+    "mechanism": {
+      "status": "BRANCH_PLANNED",
+      "queries": {
+        "mechanism": {"status": "SEARCHED"},
+        "predecessors": {"status": "SEARCHED"},
+        "counter": {"status": "SEARCHED"},
+        "boundaries": {"status": "SEARCHED"}
+      },
+      "artifact_hashes": {"evidence": "topic-v1"},
+      "coverage_report": {"hash": "coverage-topic-v1", "gaps": []},
+      "load_bearing_claims": ["mechanism"]
+    }
+  }
+}

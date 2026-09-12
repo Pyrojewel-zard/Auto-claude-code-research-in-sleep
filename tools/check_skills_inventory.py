@@ -20,6 +20,10 @@ ARIS_INTRO_HTML = REPO_ROOT / "docs" / "ARIS_INTRO.html"
 CODEX_README = CODEX_ROOT / "README.md"
 CODEX_README_CN = CODEX_ROOT / "README_CN.md"
 BOM = b"\xef\xbb\xbf"
+# A user-preserved checkout of the standalone Anti-Autoresearch project may
+# exist in a dirty development workspace. It is intentionally not shipped as
+# an ARIS skill; ARIS owns the runtime snapshot under vendor/anti-autoresearch.
+LEGACY_UNTRACKED_MAIN_ENTRIES = {"anti-autoresearch-bundle"}
 
 FORBIDDEN_CODEX_REVIEWER_STRINGS = (
     "mcp__codex__codex",
@@ -116,7 +120,7 @@ def require_count(path: Path, text: str, pattern: str, expected_count: int, fail
 
 def check_inventory() -> list[str]:
     failures: list[str] = []
-    main = skill_names(SKILLS_ROOT)
+    main = skill_names(SKILLS_ROOT) - LEGACY_UNTRACKED_MAIN_ENTRIES
     codex = skill_names(CODEX_ROOT)
     catalog = catalog_names()
     main_refs = {path.name for path in (SKILLS_ROOT / "shared-references").glob("*.md")}

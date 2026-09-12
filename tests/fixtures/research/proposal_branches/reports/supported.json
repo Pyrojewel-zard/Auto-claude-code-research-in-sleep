@@ -1,0 +1,5 @@
+{
+  "overall_verdict": "CLEAN_GIVEN_EVIDENCE",
+  "artifact_hashes": {"evidence": "supported-v1"},
+  "findings": []
+}

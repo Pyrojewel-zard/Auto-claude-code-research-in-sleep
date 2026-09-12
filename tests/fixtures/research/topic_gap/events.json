@@ -1,0 +1,8 @@
+[
+  {"event": "ZOTERO_RESEARCHING", "branch_id": "coverage"},
+  {"event": "BRANCH_RESEARCHED", "branch_id": "coverage"},
+  {"event": "COVERAGE_COMPLETE", "branch_id": "coverage"},
+  {"event": "EVALUATE_BRANCH", "branch_id": "coverage", "report": "reports/coverage.json"},
+  {"event": "SYNTHESIZED"},
+  {"event": "WRITE_READY"}
+]

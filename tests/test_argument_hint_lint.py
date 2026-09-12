@@ -108,6 +108,11 @@ def check_repo(root=REPO):
         raise SystemExit(f"FATAL: no skills/ directory under {root} — wrong root?")
     problems = []
     for dirpath, _dirnames, filenames in os.walk(skills_root):
+        # A development checkout of the standalone Anti project may be kept
+        # here as an untracked reference. It is not part of ARIS's shipped
+        # skill tree; the tracked runtime is vendor/anti-autoresearch/.
+        if os.path.relpath(dirpath, skills_root).split(os.sep)[0] == "anti-autoresearch-bundle":
+            continue
         for fn in filenames:
             if fn != "SKILL.md":
                 continue

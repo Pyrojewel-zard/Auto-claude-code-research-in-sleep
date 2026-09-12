@@ -96,6 +96,28 @@ def make_minimal_repo(root: Path) -> Path:
     return repo
 
 
+def make_profile_repo(root: Path) -> Path:
+    repo = make_minimal_repo(root)
+    for package in ("", "skills-codex"):
+        for name in ("research", "write", "audit"):
+            make_skill(repo / "skills" / package / name, f"# {name}\n")
+    (repo / "tools" / "skill-groups.tsv").write_text(
+        "group\tideation\tIdeation\tresearch workflows\n"
+        "group\tpaper-core\tPaper core\tevidence-gated writing\n"
+        "group\treview-loop\tReview loop\tindependent audits\n"
+        "skill\tresearch\tideation\t-\tresearch\n"
+        "skill\twrite\tpaper-core\t-\twrite\n"
+        "skill\taudit\treview-loop\t-\taudit\n",
+        encoding="utf-8",
+    )
+    (repo / "tools" / "skill-profiles.tsv").write_text(
+        "pyrojewel-research\tresearch,write,audit\t"
+        "Codex-first Zotero research, writing, and Anti audit\n",
+        encoding="utf-8",
+    )
+    return repo
+
+
 def test_install_aris_ps1_codex_dry_run_has_no_project_writes(tmp_path: Path) -> None:
     repo = make_minimal_repo(tmp_path)
     project = tmp_path / "project"
@@ -357,3 +379,144 @@ def test_install_aris_ps1_clear_stale_lock(tmp_path: Path) -> None:
     run_ps([str(project), "-Platform", "codex", "-ArisRepo", str(repo), "-ClearStaleLock"])
     assert not lock_dir.exists()
     assert junction_target(project / ".agents" / "skills" / "alpha") == repo / "skills" / "skills-codex" / "alpha"
+
+
+def test_install_aris_ps1_profile_selects_only_public_entries(tmp_path: Path) -> None:
+    repo = make_profile_repo(tmp_path)
+    project = tmp_path / "project"
+    project.mkdir()
+
+    run_ps(
+        [
+            str(project),
+            "-Platform",
+            "codex",
+            "-ArisRepo",
+            str(repo),
+            "-Profile",
+            "pyrojewel-research",
+        ]
+    )
+
+    installed = {
+        path.name
+        for path in (project / ".agents" / "skills").iterdir()
+        if path.name != "shared-references"
+    }
+    assert installed == {"research", "write", "audit"}
+
+
+def test_install_aris_ps1_profile_supports_exclude_dry_run_and_conflicts(tmp_path: Path) -> None:
+    repo = make_profile_repo(tmp_path)
+    project = tmp_path / "project"
+    project.mkdir()
+
+    run_ps(
+        [
+            str(project),
+            "-Platform",
+            "codex",
+            "-ArisRepo",
+            str(repo),
+            "-Profile",
+            "pyrojewel-research",
+            "-Exclude",
+            "write",
+        ]
+    )
+    installed = {
+        path.name
+        for path in (project / ".agents" / "skills").iterdir()
+        if path.name != "shared-references"
+    }
+    assert installed == {"research", "audit"}
+
+    conflict = run_ps(
+        [
+            str(project),
+            "-Platform",
+            "codex",
+            "-ArisRepo",
+            str(repo),
+            "-Profile",
+            "pyrojewel-research",
+            "-All",
+        ],
+        check=False,
+    )
+    assert conflict.returncode == 2
+
+    conflict = run_ps(
+        [
+            str(project),
+            "-Platform",
+            "codex",
+            "-ArisRepo",
+            str(repo),
+            "-Profile",
+            "pyrojewel-research",
+            "-Groups",
+            "ideation",
+        ],
+        check=False,
+    )
+    assert conflict.returncode == 2
+
+    unknown = run_ps(
+        [
+            str(project),
+            "-Platform",
+            "codex",
+            "-ArisRepo",
+            str(repo),
+            "-Profile",
+            "missing-profile",
+        ],
+        check=False,
+    )
+    assert unknown.returncode != 0
+    assert "unknown profile" in unknown.stderr.lower()
+
+    dry_project = tmp_path / "dry-project"
+    dry_project.mkdir()
+    run_ps(
+        [
+            str(dry_project),
+            "-Platform",
+            "codex",
+            "-ArisRepo",
+            str(repo),
+            "-Profile",
+            "pyrojewel-research",
+            "-DryRun",
+        ]
+    )
+    assert not (dry_project / ".aris").exists()
+    assert not (dry_project / ".agents").exists()
+
+
+def test_install_aris_ps1_profile_flags_and_help_match_bash_contract(tmp_path: Path) -> None:
+    text = INSTALL_PS1.read_text(encoding="utf-8")
+    assert "[string]$Profile" in text
+    assert "[switch]$ListProfiles" in text
+    assert "-Profile" in text
+    assert "-ListProfiles" in text
+    assert "pyrojewel-research" not in text
+
+    if PS_EXE is None or os.name != "nt":
+        return
+    repo = make_profile_repo(tmp_path)
+    project = tmp_path / "project"
+    project.mkdir()
+    result = run_ps(
+        [
+            str(project),
+            "-Platform",
+            "codex",
+            "-ArisRepo",
+            str(repo),
+            "-ListProfiles",
+        ]
+    )
+    assert "pyrojewel-research" in result.stdout
+    assert "Skill groups" not in result.stdout

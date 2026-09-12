@@ -1,0 +1,20 @@
+{
+  "mode": "topic",
+  "branches": {
+    "coverage": {
+      "status": "BRANCH_PLANNED",
+      "queries": {
+        "mechanism": {"status": "SEARCHED"},
+        "predecessors": {"status": "NO_HIT"},
+        "counter": {"status": "UNVERIFIED"},
+        "boundaries": {"status": "SEARCHED"}
+      },
+      "artifact_hashes": {"evidence": "gap-v1"},
+      "coverage_report": {
+        "hash": "coverage-gap-v1",
+        "gaps": [{"claim": "long-term boundary"}]
+      },
+      "load_bearing_claims": ["coverage-limited"]
+    }
+  }
+}

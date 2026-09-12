@@ -1,57 +1,45 @@
-# Zotero 集成（可选）
+# Zotero 集成
 
-> 🇬🇧 English: [ZOTERO.md](ZOTERO.md)
-> 接入 [`/research-lit`](../../skills/research-lit/SKILL.md) 以及调用它的上游 skill（`/idea-discovery`、`/research-pipeline`）。
+精简后的 ARIS 流程以 Zotero 为唯一自动文献发现入口：
 
-如果你用 [Zotero](https://www.zotero.org/) 管理论文，`/research-lit` 可以搜索你的文献库、读取标注/高亮、导出 BibTeX——全部在联网搜索**之前**完成。这能显著提升引用质量，因为文献检索从你已经审过的论文开始。
-
-## 推荐的 MCP server
-
-**[zotero-mcp](https://github.com/54yyyu/zotero-mcp)**（1.8k⭐，语义搜索 + PDF 标注 + BibTeX 导出）
-
-```bash
-# 安装
-uv tool install zotero-mcp-server   # 或: pip install zotero-mcp-server
-
-# 添加到 Claude Code（本地 API——需要 Zotero 桌面端运行）
-claude mcp add zotero -s user -- zotero-mcp -e ZOTERO_LOCAL=true
-
-# 或使用 Web API（不需要打开 Zotero）
-claude mcp add zotero -s user -- zotero-mcp \
-  -e ZOTERO_API_KEY=your_key -e ZOTERO_USER_ID=your_id
+```text
+/research -> Zotero semantic search -> evidence matrix -> /write -> /audit
 ```
 
-> API Key 在 https://www.zotero.org/settings/keys 获取
+`/research` 为每个分支 `QUERY_PACK.md` 中的 query 调用一次
+`mcp__zotero_mcp__semantic_search`；结果为空时最多用声明过的别名重试一次，
+随后必须记录终态。对去重后的命中，可继续读取 Zotero item details、全文
+content、annotations/highlights 来核验具体段落。
 
-## 启用后 `/research-lit` 新增能力
+## 配置 MCP
 
-- 🔍 按主题搜索 Zotero 库（含语义/向量搜索）
-- 📂 浏览 Collections 和 Tags
-- 📝 读取你的 PDF 标注和高亮（你**个人**认为重要的内容）
-- 📄 导出 BibTeX 供论文写作直接使用
+按照 Zotero MCP server 的当前说明安装，并在运行 ARIS 的宿主中暴露它。常见
+的本地桌面配置示例：
 
-## 配置 Zotero 后 `/research-lit` 的搜索顺序
+```bash
+uv tool install zotero-mcp-server
+claude mcp add zotero -s user -- zotero-mcp -e ZOTERO_LOCAL=true
+```
 
-配置后默认顺序变成：
+Web API 模式的凭证只通过 MCP server 环境配置，不要写入本仓库。
 
-1. **Zotero**（你的文献库——最快、信号最强）
-2. **Obsidian**（如果[也配置了](OBSIDIAN_CN.md)——你加工后的笔记）
-3. **本地 PDF**（项目目录下的）
-4. **网络搜索**（`web`，包括 arXiv 和 Google Scholar；包含在默认 `all` 中）
-5. **显式启用的外部源**（`semantic-scholar`、`deepxiv`、`exa`、`gemini`、`openalex`；只有在 `— sources:` 中显式列出时才搜索）
+开始运行前确认宿主提供 semantic search 以及 item/content/annotation 工具。
+如果 MCP 或语义索引不可用，ARIS 会记录 `ERROR` 并保留 query，不会静默切换到
+WebSearch、arXiv、Semantic Scholar、OpenAlex、Exa、Gemini 或其他文献源。
 
-可以用 `— sources: zotero, web` 或 `— sources: all` 覆盖默认。
+## 证据契约
 
-## 不用 Zotero？
+每个分支在 `EVIDENCE_MATRIX.md` 中为每个 query 保留一行，记录：
 
-没配置时 `/research-lit` 自动跳过，用本地 PDF + 网络搜索。无报错无警告。
+- Query ID 与申请书/分支 claim；
+- `SEARCHED`、`NO_HIT`、`UNVERIFIED`、`UNSEARCHABLE`、`ERROR` 之一；
+- Zotero `itemKey`、文献身份、匹配 chunk 或 annotation；
+- `supports`、`contradicts`、`limits`、`unclear` 之一；以及
+- verification status 与 coverage gap。
 
-## Zotero + Obsidian 组合工作流
+完成 `COVERAGE_REPORT.md` 后，默认 `external_expansion: ask` 只针对报告中的
+gap 询问一次；`never` 保留 gap，`allow` 只允许预先授权的定向扩展。两者都不
+改变 Zotero 的自动检索契约。
 
-很多研究者用 Zotero 存论文、Obsidian 记笔记。两个集成可以同时工作——`/research-lit` 先查 Zotero（原始论文 + 标注），再查 Obsidian（加工后笔记），再查本地 PDF，最后搜网络。Obsidian 半边的配置见 [OBSIDIAN_CN.md](OBSIDIAN_CN.md)。
-
-## 相关 skill
-
-- [`/research-lit`](../../skills/research-lit/SKILL.md) —— 主要消费者
-- [`/idea-discovery`](../../skills/idea-discovery/SKILL.md) —— 内部调用 `/research-lit`
-- [`/research-pipeline`](../../skills/research-pipeline/SKILL.md) —— Workflow 1 + 2 + 3 端到端
+完整的 topic/proposal 流程见
+[`skills/skills-codex/research/SKILL.md`](../../skills/skills-codex/research/SKILL.md)。

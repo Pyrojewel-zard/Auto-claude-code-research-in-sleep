@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (- [ ]) syntax for tracking.
 
-**Goal:** Build a Codex-first ARIS profile with research, write, and audit entries, Zotero-first retrieval, branch promotion gates, and a pinned Anti-Autoresearch adapter.
+**Goal:** Build a Codex-first ARIS profile with research, write, and audit entries, Zotero-first retrieval, branch promotion gates, and an ARIS-owned Anti-Autoresearch audit engine.
 
-**Architecture:** Rewrite the canonical research path around one dual-mode orchestrator and keep legacy entry names as non-default compatibility wrappers. Deterministic tools manage state, coverage, promotion, version resolution, and obligations; Anti upstream supplies evidence and full-artifact adjudication.
+**Architecture:** Rewrite the canonical research path around one dual-mode orchestrator and keep legacy entry names as non-default compatibility wrappers. Deterministic tools manage state, coverage, promotion, provenance, and obligations; a reviewed Anti-Autoresearch snapshot is vendored inside ARIS and supplies evidence and full-artifact adjudication without a separate runtime repository.
 
 **Tech Stack:** Markdown Codex skills, Python 3 standard library, Bash installers, JSON, pytest/unittest-compatible tests.
 
@@ -13,7 +13,7 @@
 ## Global Constraints
 
 - Work in /home/DataTransfer/Pyrojewel/code/02_claudeSkill/Auto-claude-code-research-in-sleep.
-- Complete the Anti upstream plan first and push its tested release.
+- Import the tested Anti release into ARIS first; do not require a separate Anti repository push or submodule.
 - Zotero semantic search is the only automatic literature-discovery operation.
 - WebSearch/WebFetch may run only after ask or pre-authorized allow.
 - Never silently fall back when Zotero MCP or its index fails.
@@ -25,13 +25,29 @@
 - Do not physically delete the legacy catalog in this implementation.
 - Every task ends with focused tests and a reviewable commit.
 
+## Execution Status — 2026-09-12
+
+- [x] Tasks 1–5: vendored Anti snapshot, deterministic research gates, the
+  canonical Zotero-first research/write/audit entries, and fresh-review
+  provenance are implemented in ARIS.
+- [x] Task 6: `pyrojewel-research` installs only `research`, `write`, and
+  `audit`; Bash, Codex, and PowerShell installer contracts are aligned.
+- [x] Task 7: deterministic topic/proposal fixtures, replay harness, README,
+  Zotero integration, and Codex review documentation are updated.
+- [x] Standalone Anti delivery is intentionally absent: only
+  `vendor/anti-autoresearch/` is staged for ARIS; the pre-existing
+  `skills/anti-autoresearch-bundle/` remains untracked and untouched.
+- [x] Verification: full ARIS suite `825 passed, 20 skipped, 28 subtests`
+  plus isolated vendored Anti `144 passed` and `9/9` eval recall.
+
 ---
 
 ## File Structure
 
-- Create tools/anti-autoresearch.lock.json: one pinned upstream URL, commit, and contract version.
+- Create vendor/anti-autoresearch/: a clean, tracked snapshot of the tested Anti implementation without its .git metadata or generated caches.
+- Create tools/anti-autoresearch.lock.json: provenance for the vendored source URL, commit, and contract version.
 - Create tools/update_anti_lock.py: safely write the lock from a real upstream checkout.
-- Create tools/resolve_anti_autoresearch.py: resolve local development or pinned release.
+- Create tools/resolve_anti_autoresearch.py: resolve the ARIS-vendored release, with an explicit local override only for development/testing.
 - Create tools/research_state.py: validate branch/query transitions and expansion policy.
 - Create tools/research_gate.py: map Anti reports to branch promotion and shared obligations.
 - Create skills/skills-codex/research/SKILL.md: canonical dual-mode research workflow.
@@ -43,18 +59,20 @@
 - Add focused contract, policy, resolver, installer, and end-to-end tests.
 - Update README and Zotero/Codex documentation.
 
-### Task 1: Pin and Resolve the Anti Upstream
+### Task 1: Vendor and Resolve the Anti Audit Engine
 
 **Files:**
+- Create: vendor/anti-autoresearch/ (clean snapshot from the tested Anti checkout; no nested .git)
 - Create: tools/anti-autoresearch.lock.json
 - Create: tools/update_anti_lock.py
 - Create: tools/resolve_anti_autoresearch.py
 - Create: tests/test_anti_autoresearch_resolver.py
+- Create: tests/test_anti_autoresearch_vendor.py
 
 **Interfaces:**
-- Consumes: a tested Anti checkout and its exact git rev-parse HEAD.
-- Produces: update_lock(lock_path: Path, repo_url: str, commit: str, contract_version: str) and resolve_anti(lock_path: Path, local_repo: Path | None, cache_root: Path) -> Resolution.
-- Resolution fields: repo_path, commit, source_kind, contract_version.
+- Consumes: the tested Anti checkout at the exact reviewed commit and its exact git rev-parse HEAD.
+- Produces: a vendored source tree, provenance lock, update_lock(lock_path: Path, repo_url: str, commit: str, contract_version: str), and resolve_anti(lock_path: Path, local_repo: Path | None, cache_root: Path) -> Resolution.
+- Resolution fields: repo_path, commit, source_kind, contract_version; the default source_kind is `vendored`.
 
 - [ ] **Step 1: Write failing lock and resolver tests**
 
@@ -89,7 +107,7 @@ python3 -m pytest tests/test_anti_autoresearch_resolver.py -q
 
 Expected: FAIL because both tools are absent.
 
-- [ ] **Step 3: Implement updater and resolver**
+- [ ] **Step 3: Import the clean Anti snapshot and implement the vendored resolver**
 
 The updater CLI is:
 
@@ -104,24 +122,32 @@ python3 tools/update_anti_lock.py
 It reads git rev-parse HEAD from the checkout and refuses a dirty checkout,
 non-40-character SHA, missing workflow, or failing upstream eval.
 
-The resolver checks ARIS_ANTI_REPO first when explicitly set. Otherwise it
-clones/fetches into a narrow cache path, checks out the locked commit, verifies
-the contract version, and returns structured JSON with --json.
+Export the tracked files from the tested Anti checkout into
+`vendor/anti-autoresearch/` without copying `.git`, ignored caches, generated
+eval output, or a second nested repository. Record the original repository URL,
+exact commit, and contract version in the ARIS lock. The resolver uses this
+vendored tree by default, verifies the contract and exact source provenance,
+and returns structured JSON with `source_kind: vendored`. An explicit local
+checkout may be used only for development/testing and must still match the
+contract; normal resolution must never clone or fetch a separate Anti repo.
 
-- [ ] **Step 4: Generate the real lock and run tests**
+- [ ] **Step 4: Verify the vendored release and run tests**
 
 ~~~bash
 python3 tools/update_anti_lock.py --repo-url git@github.com:wanshuiyin/Anti-Autoresearch.git --checkout /home/DataTransfer/Pyrojewel/code/02_claudeSkill/Anti-Autoresearch --contract-version 0.1 --out tools/anti-autoresearch.lock.json
-python3 -m pytest tests/test_anti_autoresearch_resolver.py -q
+python3 -m pytest tests/test_anti_autoresearch_resolver.py tests/test_anti_autoresearch_vendor.py -q
+python3 /home/DataTransfer/Pyrojewel/code/02_claudeSkill/Anti-Autoresearch/eval/run_eval.py
 ~~~
 
-Expected: PASS and the lock contains the exact pushed Anti HEAD.
+Expected: PASS; the lock records the exact tested Anti HEAD, the vendored
+tree has no nested repository metadata, and no network access is needed for
+normal ARIS resolution. A separate Anti push is not part of this task.
 
 - [ ] **Step 5: Commit the resolver**
 
 ~~~bash
-git add tools/anti-autoresearch.lock.json tools/update_anti_lock.py tools/resolve_anti_autoresearch.py tests/test_anti_autoresearch_resolver.py
-git commit -m "feat: pin Anti-Autoresearch evidence audit"
+git add vendor/anti-autoresearch tools/anti-autoresearch.lock.json tools/update_anti_lock.py tools/resolve_anti_autoresearch.py tests/test_anti_autoresearch_resolver.py tests/test_anti_autoresearch_vendor.py
+git commit -m "feat: vendor Anti-Autoresearch audit engine"
 ~~~
 
 ### Task 2: Add Deterministic Research State and Promotion Policy
@@ -381,7 +407,7 @@ git commit -m "feat: add evidence-gated research writing"
 - Create: tests/test_audit_skill_contract.py
 
 **Interfaces:**
-- Consumes: frozen PDF/source/code/results directory and tools/resolve_anti_autoresearch.py output.
+- Consumes: frozen PDF/source/code/results directory and tools/resolve_anti_autoresearch.py output for the ARIS-vendored Anti engine.
 - Produces: upstream report.json and REPORT.md plus ARIS gate and append-only obligations.
 - Produces: classify_review_provenance(executor: str, reviewer: str, isolated: bool) -> str in tools/forensics_gate.py.
 
@@ -417,13 +443,13 @@ Expected: FAIL because audit and isolated provenance do not exist.
 
 - [ ] **Step 3: Implement audit and provenance**
 
-Audit resolves the local or pinned Anti repo, runs its eval, invokes the frozen
-artifact workflow, and folds the report into forensics_gate.py. Extend
+Audit resolves the ARIS-vendored Anti snapshot, runs its eval, invokes the
+frozen artifact workflow, and folds the report into forensics_gate.py. Extend
 provenance labels to cross-family, same-family-isolated, and same-context.
 Same-context must fail closed.
 
 Legacy integrity-forensics becomes a wrapper to audit and no longer hard-codes
-the repository URL or commit.
+the external repository URL or commit; provenance comes from the ARIS lock.
 
 - [ ] **Step 4: Run audit and resolver tests**
 
@@ -528,7 +554,7 @@ git commit -m "feat: add Pyrojewel research profile"
 - Modify: docs/CODEX_CLAUDE_REVIEW_GUIDE_CN.md
 
 **Interfaces:**
-- Consumes: all prior ARIS tasks and the pinned Anti release.
+- Consumes: all prior ARIS tasks and the ARIS-vendored Anti release.
 - Produces: fixture-backed proof of both research modes, gap policy, partial branch failure, writing gates, full audit resolution, and install surface.
 - Produces: run_fixture(fixture_dir: Path, expansion_policy: str) -> dict in tools/replay_research_fixture.py.
 
@@ -578,8 +604,9 @@ README start-here must lead with:
 ~~~
 
 Document topic and proposal modes, Zotero semantic index requirements,
-ask/never/allow policy, isolated Codex review, the Anti lock, and the fact that
-the legacy catalog remains available but outside the minimal profile.
+ask/never/allow policy, isolated Codex review, the vendored Anti provenance
+lock, and the fact that the legacy catalog remains available but outside the
+minimal profile.
 
 - [ ] **Step 4: Run the full ARIS verification suite**
 
@@ -592,8 +619,9 @@ git status --short
 ~~~
 
 Expected: all tests PASS; list-profiles includes pyrojewel-research; dry-run
-contains research, write, audit and no broad search skill; the pre-existing
-untracked anti-autoresearch-bundle remains unstaged.
+contains research, write, audit and no broad search skill; the ARIS-vendored
+Anti tree is tracked while the pre-existing untracked
+anti-autoresearch-bundle remains untouched and unstaged.
 
 - [ ] **Step 5: Commit and push ARIS**
 
@@ -605,4 +633,5 @@ git status --short
 ~~~
 
 Expected: push succeeds; only planning files and the pre-existing untracked
-anti-autoresearch-bundle may remain outside the implementation commits.
+anti-autoresearch-bundle may remain outside the implementation commits. No
+separate Anti repository push is required.

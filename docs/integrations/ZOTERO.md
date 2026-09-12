@@ -1,57 +1,51 @@
-# Zotero Integration (Optional)
+# Zotero integration
 
-> 🇨🇳 中文版：[ZOTERO_CN.md](ZOTERO_CN.md)
-> Plugs into [`/research-lit`](../../skills/research-lit/SKILL.md) and the upstream skills that call it (`/idea-discovery`, `/research-pipeline`).
+ARIS's reduced flow is Zotero-first:
 
-If you use [Zotero](https://www.zotero.org/) to manage your paper library, `/research-lit` can search your collections, read your annotations/highlights, and export BibTeX — all **before** searching the web. This dramatically improves citation quality because the literature search starts from papers you've already vetted.
-
-## Recommended MCP server
-
-**[zotero-mcp](https://github.com/54yyyu/zotero-mcp)** (1.8k⭐, semantic search, PDF annotations, BibTeX export)
-
-```bash
-# Install
-uv tool install zotero-mcp-server   # or: pip install zotero-mcp-server
-
-# Add to Claude Code (Local API — requires Zotero desktop running)
-claude mcp add zotero -s user -- zotero-mcp -e ZOTERO_LOCAL=true
-
-# Or use Web API (works without Zotero running)
-claude mcp add zotero -s user -- zotero-mcp \
-  -e ZOTERO_API_KEY=your_key -e ZOTERO_USER_ID=your_id
+```text
+/research -> Zotero semantic search -> evidence matrix -> /write -> /audit
 ```
 
-> Get your API key at https://www.zotero.org/settings/keys
+The automatic scholarly retrieval operation is
+`mcp__zotero_mcp__semantic_search`. For every query in a branch's
+`QUERY_PACK.md`, `/research` makes one semantic call, optionally retries once
+with a declared alias, then records a terminal status. It can use Zotero item
+details, full-text content, and annotations to verify the matched passage.
 
-## What it enables in `/research-lit`
+## Configure the MCP server
 
-- 🔍 Search your Zotero library by topic (including semantic/vector search)
-- 📂 Browse collections and tags
-- 📝 Read your PDF annotations and highlights (what *you* personally found important)
-- 📄 Export BibTeX for direct use in paper writing
+Install the Zotero MCP server using its own current instructions, then expose
+it to the host running ARIS. A local desktop setup commonly looks like:
 
-## How `/research-lit` orders sources
+```bash
+uv tool install zotero-mcp-server
+claude mcp add zotero -s user -- zotero-mcp -e ZOTERO_LOCAL=true
+```
 
-When Zotero is configured, the default search order becomes:
+For a Web API setup, provide the Zotero API credentials through the MCP
+server's environment rather than writing them into this repository.
 
-1. **Zotero** (your library — fastest, highest signal)
-2. **Obsidian** (if [also configured](OBSIDIAN.md) — your processed notes)
-3. **Local PDFs** under the project directory
-4. **Web search** (`web`, including arXiv and Google Scholar; included in default `all`)
-5. **Opt-in external sources** (`semantic-scholar`, `deepxiv`, `exa`, `gemini`, `openalex`; only searched when explicitly listed via `— sources:`)
+Verify that the host exposes semantic search and the companion item/content/
+annotation tools before starting a run. If the MCP or semantic index is
+unavailable, ARIS records `ERROR` and keeps the query visible; it does not
+silently switch to WebSearch, arXiv, Semantic Scholar, OpenAlex, Exa, Gemini,
+or another scholarly source.
 
-Override the default with `— sources: zotero, web` or `— sources: all`.
+## Evidence contract
 
-## Fallback: no Zotero
+Each branch writes one row per query to `EVIDENCE_MATRIX.md` and records:
 
-Without Zotero configured, `/research-lit` automatically skips it and uses local PDFs + web search instead. No errors, no warnings.
+- Query ID and draft/branch claim;
+- query status: `SEARCHED`, `NO_HIT`, `UNVERIFIED`, `UNSEARCHABLE`, or `ERROR`;
+- Zotero `itemKey`, bibliographic identity, matched chunk or annotation;
+- evidence direction: `supports`, `contradicts`, `limits`, or `unclear`; and
+- verification status and any coverage gap.
 
-## Combined Zotero + Obsidian workflow
+After `COVERAGE_REPORT.md`, the default `external_expansion: ask` policy asks
+once about only the named gaps. `never` preserves them; `allow` requires an
+explicit targeted policy. Neither policy changes the automatic Zotero
+contract.
 
-Many researchers use Zotero for paper storage and Obsidian for notes. Both integrations work simultaneously — `/research-lit` checks Zotero first (raw papers + annotations), then Obsidian (your processed notes), then local PDFs, then web. See [OBSIDIAN.md](OBSIDIAN.md) for the Obsidian half of the setup.
-
-## Related skills
-
-- [`/research-lit`](../../skills/research-lit/SKILL.md) — primary consumer
-- [`/idea-discovery`](../../skills/idea-discovery/SKILL.md) — uses `/research-lit` internally
-- [`/research-pipeline`](../../skills/research-pipeline/SKILL.md) — Workflow 1 + 2 + 3 end-to-end
+See [`skills/skills-codex/research/SKILL.md`](../../skills/skills-codex/research/SKILL.md)
+for the full topic/proposal workflow and [`ZOTERO_CN.md`](ZOTERO_CN.md) for
+the Chinese version.

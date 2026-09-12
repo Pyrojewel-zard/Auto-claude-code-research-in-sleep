@@ -11,9 +11,11 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 CATALOG = REPO_ROOT / "tools" / "skill-groups.tsv"
+PROFILE_CATALOG = REPO_ROOT / "tools" / "skill-profiles.tsv"
 SKILLS_DIR = REPO_ROOT / "skills"
-# Not skills: support dir + codex mirror trees (mirror reuses mainline names).
-NON_SKILL_DIRS = {"shared-references"}
+# Not skills: support dir, the preserved untracked legacy bundle, and codex
+# mirror trees (mirror reuses mainline names).
+NON_SKILL_DIRS = {"shared-references", "anti-autoresearch-bundle"}
 
 
 def parse_catalog():
@@ -43,6 +45,20 @@ def upstream_skills():
         and p.name not in NON_SKILL_DIRS
         and not p.name.startswith("skills-codex")
     }
+
+
+def parse_profiles():
+    profiles = {}
+    for line in PROFILE_CATALOG.read_text().splitlines():
+        if not line or line.startswith("#"):
+            continue
+        fields = line.split("\t")
+        assert len(fields) == 3, f"malformed profile record: {line!r}"
+        assert fields[0] not in profiles, f"duplicate profile record: {fields[0]}"
+        assert fields[1].strip(), f"empty profile skills: {fields[0]}"
+        assert fields[2].strip(), f"empty profile description: {fields[0]}"
+        profiles[fields[0]] = (fields[1], fields[2])
+    return profiles
 
 
 class CatalogTest(unittest.TestCase):
@@ -105,6 +121,15 @@ class CatalogTest(unittest.TestCase):
                     f"skills/{name}/SKILL.md never references /{dep} — "
                     "stale edge or wrong dependency",
                 )
+
+    def test_pyrojewel_profile_references_three_public_entries_without_requires(self):
+        profiles = parse_profiles()
+        self.assertIn("pyrojewel-research", profiles)
+        selected = profiles["pyrojewel-research"][0].split(",")
+        self.assertEqual(selected, ["research", "write", "audit"])
+        for name in selected:
+            self.assertIn(name, self.skills)
+            self.assertEqual(self.skills[name][1], "-")
 
 
 if __name__ == "__main__":

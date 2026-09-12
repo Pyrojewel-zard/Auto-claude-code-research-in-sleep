@@ -24,6 +24,20 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parent.parent
 INSTALL_SCRIPT = REPO_ROOT / "tools" / "install_aris.sh"
+CODEX_INSTALLER = REPO_ROOT / "tools" / "install_aris_codex.sh"
+
+PROFILE_NAME = "pyrojewel-research"
+PROFILE_CATALOG = """\
+pyrojewel-research\tresearch,write,audit\tCodex-first Zotero research, writing, and Anti audit
+"""
+PROFILE_SKILL_CATALOG = """\
+group\tideation\tIdeation\tresearch workflows
+group\tpaper-core\tPaper core\tevidence-gated writing
+group\treview-loop\tReview loop\tindependent audits
+skill\tresearch\tideation\t-\tresearch
+skill\twrite\tpaper-core\t-\twrite
+skill\taudit\treview-loop\t-\taudit
+"""
 
 CATALOG = """\
 group\tg1\tGroup One\tfirst group
@@ -229,6 +243,158 @@ class SelectiveInstallTest(unittest.TestCase):
         self.assertEqual(result.returncode, 0, msg=result.stdout + result.stderr)
         self.assertEqual(self._installed(), {"alpha", "gamma"})
         self.assertEqual(self._declined(), {"beta", "delta"})
+
+
+class CodexProfileInstallTest(unittest.TestCase):
+    def setUp(self):
+        self.tmp = Path(tempfile.mkdtemp(prefix="aris-profile-"))
+        self.home = self.tmp / "home"
+        self.home.mkdir()
+        self.repo = self.tmp / "arisrepo"
+        self.project = self.tmp / "project"
+        self.project.mkdir()
+        (self.repo / "tools").mkdir(parents=True)
+        (self.repo / "tools" / "skill-groups.tsv").write_text(PROFILE_SKILL_CATALOG)
+        (self.repo / "tools" / "skill-profiles.tsv").write_text(PROFILE_CATALOG)
+        for name in ("research", "write", "audit"):
+            self._add_skill(name)
+        (self.repo / "skills" / "skills-codex" / "shared-references").mkdir(parents=True)
+        (self.repo / "skills" / "shared-references").mkdir(parents=True)
+
+    def tearDown(self):
+        import shutil
+
+        shutil.rmtree(self.tmp, ignore_errors=True)
+
+    def _add_skill(self, name):
+        for package in ("", "skills-codex"):
+            skill_dir = self.repo / "skills" / package / name
+            skill_dir.mkdir(parents=True, exist_ok=True)
+            (skill_dir / "SKILL.md").write_text(f"# {name}\n")
+
+    def _run(self, *extra_args, check=True):
+        result = subprocess.run(
+            [
+                "bash",
+                str(CODEX_INSTALLER),
+                str(self.project),
+                "--aris-repo",
+                str(self.repo),
+                "--quiet",
+                "--no-doc",
+                *extra_args,
+            ],
+            capture_output=True,
+            text=True,
+            env={"HOME": str(self.home), "PATH": "/usr/bin:/bin:/usr/sbin:/sbin"},
+        )
+        if check:
+            self.assertEqual(result.returncode, 0, msg=result.stdout + result.stderr)
+        return result
+
+    def _run_generic(self, platform, *extra_args, check=True):
+        result = subprocess.run(
+            [
+                "bash",
+                str(INSTALL_SCRIPT),
+                str(self.project),
+                "--platform",
+                platform,
+                "--aris-repo",
+                str(self.repo),
+                "--quiet",
+                "--no-doc",
+                *extra_args,
+            ],
+            capture_output=True,
+            text=True,
+            env={"HOME": str(self.home), "PATH": "/usr/bin:/bin:/usr/sbin:/sbin"},
+        )
+        if check:
+            self.assertEqual(result.returncode, 0, msg=result.stdout + result.stderr)
+        return result
+
+    def _installed(self, platform="codex"):
+        root = self.project / (".agents" if platform == "codex" else ".claude") / "skills"
+        if not root.is_dir():
+            return set()
+        return {path.name for path in root.iterdir() if path.name != "shared-references"}
+
+    def test_pyrojewel_profile_selects_only_three_public_entries(self):
+        self._run("--profile", PROFILE_NAME)
+        self.assertEqual(self._installed(), {"research", "write", "audit"})
+
+    def test_profile_exclude_prunes_selected_entry(self):
+        self._run("--profile", PROFILE_NAME, "--exclude", "write")
+        self.assertEqual(self._installed(), {"research", "audit"})
+
+    def test_profile_dry_run_writes_nothing(self):
+        self._run("--profile", PROFILE_NAME, "--dry-run")
+        self.assertEqual(self._installed(), set())
+        self.assertFalse((self.project / ".aris").exists())
+        self.assertFalse((self.project / ".agents").exists())
+
+    def test_profile_rejects_all_and_groups_with_cli_code_2(self):
+        result = self._run("--profile", PROFILE_NAME, "--all", check=False)
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("cannot be combined", result.stderr)
+
+        result = self._run("--profile", PROFILE_NAME, "--groups", "ideation", check=False)
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("cannot be combined", result.stderr)
+
+    def test_unknown_profile_is_an_error(self):
+        result = self._run("--profile", "missing-profile", check=False)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("unknown profile", result.stderr)
+
+    def test_list_profiles_only_prints_profile_catalog(self):
+        result = subprocess.run(
+            [
+                "bash",
+                str(CODEX_INSTALLER),
+                str(self.project),
+                "--aris-repo",
+                str(self.repo),
+                "--list-profiles",
+            ],
+            capture_output=True,
+            text=True,
+            env={"HOME": str(self.home), "PATH": "/usr/bin:/bin:/usr/sbin:/sbin"},
+        )
+        self.assertEqual(result.returncode, 0, msg=result.stderr)
+        self.assertIn(PROFILE_NAME, result.stdout)
+        self.assertNotIn("Skill groups", result.stdout)
+        self.assertFalse((self.project / ".aris").exists())
+        self.assertFalse((self.project / ".agents").exists())
+
+    def test_profile_reconcile_keeps_existing_manifest_scope(self):
+        self._run("--profile", PROFILE_NAME)
+        self._add_skill("legacy")
+        self._run("--profile", PROFILE_NAME, "--reconcile")
+        self.assertEqual(self._installed(), {"research", "write", "audit"})
+
+    def test_generic_installer_delegates_profile_to_codex(self):
+        self._run_generic("codex", "--profile", PROFILE_NAME)
+        self.assertEqual(self._installed("codex"), {"research", "write", "audit"})
+
+    def test_generic_installer_uses_profile_for_claude_flat_install(self):
+        self._run_generic("claude", "--profile", PROFILE_NAME)
+        self.assertEqual(self._installed("claude"), {"research", "write", "audit"})
+
+    def test_profile_options_are_present_in_shell_help_and_syntax_is_valid(self):
+        for script in (CODEX_INSTALLER, INSTALL_SCRIPT):
+            help_result = subprocess.run(
+                ["bash", str(script), "--help"],
+                capture_output=True,
+                text=True,
+                env={"HOME": str(self.home), "PATH": "/usr/bin:/bin:/usr/sbin:/sbin"},
+            )
+            self.assertEqual(help_result.returncode, 0, msg=help_result.stderr)
+            self.assertIn("--profile", help_result.stdout)
+            self.assertIn("--list-profiles", help_result.stdout)
+            syntax_result = subprocess.run(["bash", "-n", str(script)], capture_output=True, text=True)
+            self.assertEqual(syntax_result.returncode, 0, msg=syntax_result.stderr)
 
 
 if __name__ == "__main__":

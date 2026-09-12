@@ -1,6 +1,6 @@
 ---
 name: research
-description: "Public compatibility entry for the canonical Codex research workflow."
+description: Use when starting ARIS topic or proposal research through the canonical Zotero-first workflow.
 ---
 
 # `/research` public entry
