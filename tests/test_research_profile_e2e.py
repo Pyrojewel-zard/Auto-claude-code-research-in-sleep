@@ -8,6 +8,22 @@ from replay_research_fixture import run_fixture
 
 
 FIXTURES = Path(__file__).parent / "fixtures" / "research"
+PROFILE = Path(__file__).resolve().parents[1] / "tools" / "skill-profiles.tsv"
+
+
+def test_default_profile_keeps_the_four_entry_boundary():
+    rows = [
+        line.split("\t")
+        for line in PROFILE.read_text(encoding="utf-8").splitlines()
+        if line.strip()
+    ]
+    profile = next(row for row in rows if row[0] == "pyrojewel-research")
+    assert profile[1].split(",") == [
+        "autoresearch-topic",
+        "autoresearch-proposal",
+        "research-write",
+        "research-audit",
+    ]
 
 
 def test_topic_fixture_reaches_synthesis_with_zotero_only():

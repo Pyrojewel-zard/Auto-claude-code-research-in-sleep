@@ -4,7 +4,7 @@
 
 ## 当前范围
 
-- 基座覆盖：主线 `skills/` 的 `85` 个已发布 skill 全量同步（保留的未跟踪 Anti checkout 不属于 skill）
+- 基座覆盖：主线 `skills/` 的 `89` 个已发布 skill 全量同步（保留的未跟踪 Anti checkout 不属于 skill）
 - 支持目录：`shared-references/`，与主线 `30/30` 名称完整对齐
 - reviewer-heavy skill 的默认 reviewer 契约：
   - 首轮：`spawn_agent`

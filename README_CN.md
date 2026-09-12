@@ -3,7 +3,8 @@
 ## 从这里开始：精简后的 ARIS 流程
 
 ```text
-/research  ->  /write  ->  /audit
+/autoresearch-topic     ->  /research-audit  ->  /research-write
+/autoresearch-proposal  ->  /research-audit  ->  /research-write
 ```
 
 日常使用 Codex 时安装最小 profile：
@@ -12,10 +13,13 @@
 bash tools/install_aris_codex.sh /path/to/project --profile pyrojewel-research
 ```
 
-`/research` 接受一个主题或已有的申请书草案，通过 Zotero semantic search
-拆出独立分支，并在每个分支完成后审计再晋升。`/write` 只消费已经晋升的
-证据；`/audit` 使用直接并入 ARIS 的 Anti-Autoresearch，在冻结产物上由全新
-隔离的 Codex reviewer 审计。更完整的旧 catalog 仍可用，但不属于这个 profile。
+`/autoresearch-topic` 从主题开始；`/autoresearch-proposal` 从已有申请书/项目
+申请书草案开始。两者都只使用 Zotero semantic search，拆出独立分支，完成每个
+分支后交给 `/research-audit`。`/research-write` 只消费已经晋升的证据；
+`/research-audit` 负责分支证据审计或冻结产物上的 Anti-Autoresearch 审计，使用
+全新隔离的 Codex reviewer。旧的 `/research`、`/write`、`/audit` 仍作为兼容入口
+保留，但不属于默认 profile。后续 upstream flow 先按
+[`docs/UPSTREAM_FLOW_REVIEW.md`](docs/UPSTREAM_FLOW_REVIEW.md) 审查，再决定是否并入。
 
 <p align="center">
   <a href="https://huggingface.co/papers/2605.03042">
@@ -27,7 +31,7 @@ bash tools/install_aris_codex.sh /path/to/project --profile pyrojewel-research
 
 💡 *在 [Claude Code](https://docs.anthropic.com/en/docs/claude-code) / [Codex CLI](skills/skills-codex/) / [Cursor](docs/CURSOR_ADAPTATION.md) / [Trae](docs/TRAE_ARIS_RUNBOOK_CN.md) / [Antigravity](docs/ANTIGRAVITY_ADAPTATION_CN.md) / [GitHub Copilot CLI](docs/COPILOT_CLI_ADAPTATION.md) / [OpenClaw](docs/OPENCLAW_ADAPTATION.md) / [DeepSeek Harness](https://github.com/Pyrojewel-zard/Auto-claude-code-research-in-sleep/blob/dsh-aris/README_CN.md) 里以 skill-based workflow 用 ARIS，或用独立的 **[ARIS-Code](docs/ARIS-Code-README_CN.md)** CLI 完整版体验——任你选！*
 
-🐋 **在 DeepSeek Harness 上，ARIS 是一个插件：** `dsh plugin --profile web add dsh-aris`（命令自己从 npm 拉包，无需先装什么——但 `pnpm` 必须在 `PATH` 里）—— 85 个已发布 skill 零改动，审稿人仍是 Codex。安装与限制见 [`dsh-aris` 分支](https://github.com/Pyrojewel-zard/Auto-claude-code-research-in-sleep/blob/dsh-aris/README_CN.md)。
+🐋 **在 DeepSeek Harness 上，ARIS 是一个插件：** `dsh plugin --profile web add dsh-aris`（命令自己从 npm 拉包，无需先装什么——但 `pnpm` 必须在 `PATH` 里）—— 89 个已发布 skill 零改动，审稿人仍是 Codex。安装与限制见 [`dsh-aris` 分支](https://github.com/Pyrojewel-zard/Auto-claude-code-research-in-sleep/blob/dsh-aris/README_CN.md)。
 
 🌱 *ARIS 是方法论，不是平台。重要的是科研工作流——带着它去任何地方。*
 
@@ -411,7 +415,7 @@ ARIS 读论文 → 找弱点 → 克隆代码 → 针对*那些*弱点用*那套
 git clone https://github.com/Pyrojewel-zard/Auto-claude-code-research-in-sleep.git
 bash Auto-claude-code-research-in-sleep/tools/install_aris.sh ~/your-project   # 把 ARIS skill symlink 进 <project>/.claude/skills/
 # （想全局安装？cp -r Auto-claude-code-research-in-sleep/skills/* ~/.claude/skills/）
-# （不需要全部 85 个？--list-groups / --groups X,Y / --skills X / --profile pyrojewel-research —— 见下方"选择性安装"）
+# （不需要全部 89 个？--list-groups / --groups X,Y / --skills X / --profile pyrojewel-research —— 见下方"选择性安装"）
 
 # 可选：Codex mirror 项目级受管安装
 bash Auto-claude-code-research-in-sleep/tools/install_aris_codex.sh ~/your-codex-project
@@ -443,7 +447,7 @@ claude
 > /meta-optimize                               # 元优化：分析使用记录 → 提出技能改进方案
 ```
 
-> 不需要全部 85 个 skill？见下方[选择性安装](#install-skills)按组、按 skill 或按 profile 挑选。
+> 不需要全部 89 个 skill？见下方[选择性安装](#install-skills)按组、按 skill 或按 profile 挑选。
 
 <details>
 <summary><b>📚 Research Wiki（可选）</b> —— 一行 init 启用跨 session 持久记忆；完整说明见 <a href="#-research-wiki--persistent-research-memory">§ Research Wiki</a></summary>
@@ -585,14 +589,14 @@ Codex 基础镜像默认由新的 Codex `spawn_agent` 自审：流程可以继�
 
 ## 4. ✨ 功能亮点
 
-ARIS 现有 **85 个可组合 skill**。目前推荐的减法流程是 `/research` → `/write` → `/audit`：由 Zotero semantic search 提供文献证据，只有通过门禁的分支才能进入撰写，冻结后的结果再由 ARIS 内置的 Anti-Autoresearch 引擎和全新隔离的 Codex 上下文审计。其余 skill 仍保留给旧流程和特定领域使用。
+ARIS 现有 **89 个可组合 skill**。目前推荐的减法流程是 `/autoresearch-topic` 或 `/autoresearch-proposal` → `/research-audit` → `/research-write`：由 Zotero semantic search 提供文献证据，只有通过门禁的分支才能进入撰写，冻结后的结果再由 ARIS 内置的 Anti-Autoresearch 引擎和全新隔离的 Codex 上下文审计。其余 skill 仍保留给旧流程和特定领域使用。
 
 🔥 *而且这套"广度 / 审 / 记忆"三角能适配任何 agent 的 **ultracode 式深度模式**：广度 pass 适配运行时暴露的能力（Claude Code 原生 ultracode / workflows + Opus 4.8、Codex `spawn_agent`，或纯顺序执行），并按层级干净降级（fan-out → agent spawn → 顺序）。三件事分得很清楚：**广度 · 跨模型对抗审 → 准确性 · research wiki → 记忆性**。无论循环由谁推进，最后都回到同一套跨模型对抗审 + research wiki：**能推进，不能定案**。*
 
 <details>
 <summary><b>完整功能清单</b></summary>
 
-- 📊 **85 个可组合 skill** — 推荐使用 `pyrojewel-research` profile（`/research`、`/write`、`/audit`）；旧流程和领域 skill 仍在[完整目录 →](docs/SKILLS_CATALOG.md)
+- 📊 **89 个可组合 skill** — 推荐使用 `pyrojewel-research` profile（`/autoresearch-topic`、`/autoresearch-proposal`、`/research-write`、`/research-audit`）；旧流程和领域 skill 仍在[完整目录 →](docs/SKILLS_CATALOG.md)
 - 🔍 **文献 & 查新** — 多源论文搜索（**[Zotero](docs/integrations/ZOTERO_CN.md)** + **[Obsidian](docs/integrations/OBSIDIAN_CN.md)** + **本地 PDF** + arXiv/Scholar）+ 跨模型查新验证
 - 💡 **Idea 发现** — 文献调研 → 头脑风暴 8-12 个 idea → 查新 → GPU pilot 实验 → 排名报告
 - 🔄 **自动 review 循环** — 4 轮自主审稿，一夜从 5/10 提升到 7.5/10，自动跑 20+ 组 GPU 实验
@@ -625,7 +629,7 @@ ARIS 现有 **85 个可组合 skill**。目前推荐的减法流程是 `/researc
 <a id="skills-catalog"></a>
 <a id="-skills-catalog"></a>
 
-ARIS 现有 **85+ 个 skill**，覆盖文献调研、idea 生成、实验、审计、论文写作、演讲、专利、meta 工具等——完整目录（每个 skill 含 role / category / 依赖）在 **[`docs/SKILLS_CATALOG.md`](docs/SKILLS_CATALOG.md)**，独立成文以保持 README 可扫读。
+ARIS 现有 **89+ 个 skill**，覆盖文献调研、idea 生成、实验、审计、论文写作、演讲、专利、meta 工具等——完整目录（每个 skill 含 role / category / 依赖）在 **[`docs/SKILLS_CATALOG.md`](docs/SKILLS_CATALOG.md)**，独立成文以保持 README 可扫读。
 
 <details>
 <summary><b>常用入口</b> —— 场景 → 入口 skill</summary>
@@ -646,7 +650,7 @@ ARIS 现有 **85+ 个 skill**，覆盖文献调研、idea 生成、实验、审�
 
 </details>
 
-→ **[按 category 浏览全部 85 个 skill →](docs/SKILLS_CATALOG.md)**
+→ **[按 category 浏览全部 89 个 skill →](docs/SKILLS_CATALOG.md)**
 
 ---
 

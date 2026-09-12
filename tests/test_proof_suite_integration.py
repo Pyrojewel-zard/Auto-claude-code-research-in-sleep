@@ -38,8 +38,8 @@ def test_existing_paper_workflows_keep_the_original_proof_checker() -> None:
         assert REMOVED_CHECKER not in text
 
     compatibility = read(MAIN / "paper-writing" / "SKILL.md")
-    assert "/write" in compatibility
-    assert "/audit" in compatibility
+    assert "/research-write" in compatibility
+    assert "/research-audit" in compatibility
     assert REMOVED_CHECKER not in compatibility
 
 

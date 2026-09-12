@@ -40,7 +40,7 @@ def has_send_input_block(text: str) -> bool:
 def test_codex_skill_set_matches_mainline() -> None:
     main_names = skill_names(MAIN_SKILLS) - LEGACY_UNTRACKED_SKILLS
     codex_names = skill_names(CODEX_SKILLS)
-    assert len(main_names) == 85
+    assert len(main_names) == 89
     assert main_names == codex_names
 
 
@@ -412,11 +412,17 @@ def test_codex_high_risk_skills_preserve_claude_semantics() -> None:
             "Review Tracing",
             "oracle-pro",
         ],
-        "research": [
+        "autoresearch-topic": [
             "mcp__zotero_mcp__semantic_search",
-            "one alias retry once",
+            "candidateK: 50",
             "NO_HIT",
             "fresh isolated Codex",
+        ],
+        "autoresearch-proposal": [
+            "DRAFT_ANALYSIS.md",
+            "BRANCH_RESEARCHED",
+            "mcp__zotero_mcp__semantic_search",
+            "research-audit",
         ],
         "arxiv": [
             "Update Research Wiki",
@@ -452,7 +458,7 @@ def test_codex_medium_risk_skills_preserve_claude_semantics() -> None:
             "RESEARCH_BRIEF.md",
             "Research Brief",
         ],
-        "write": [
+        "research-write": [
             "PROMOTABLE",
             "WRITING_CLAIMS.md",
             "WRITING_LIMITATIONS.md",
@@ -529,8 +535,8 @@ def test_codex_skill_instructions_use_codex_paths() -> None:
 
     assert "~/.codex/feishu.json" in auto_paper
     assert "~/.claude/feishu.json" not in auto_paper
-    assert "skills/skills-codex/write/SKILL.md" in paper_writing
-    assert "/write" in paper_writing
+    assert "skills/skills-codex/research-write/SKILL.md" in paper_writing
+    assert "/research-write" in paper_writing
     assert ".aris/installed-skills-codex.txt" not in write
     assert "~/.claude/skills/paper-writing/SKILL.md" not in paper_writing
     assert "~/.claude/settings.json" not in paper_writing

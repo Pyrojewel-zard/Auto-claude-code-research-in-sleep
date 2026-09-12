@@ -4,7 +4,7 @@ Codex-native mirror and adaptation layer for the main ARIS `skills/` package.
 
 ## Scope
 
-- Base mirror coverage: all `85` mainline skills under `skills/` (the preserved untracked Anti checkout is not a skill)
+- Base mirror coverage: all `89` mainline skills under `skills/` (the preserved untracked Anti checkout is not a skill)
 - Support directory: `shared-references/`, with all `30/30` mainline reference names mirrored
 - Default reviewer contract for reviewer-heavy skills:
   - round 1: `spawn_agent`

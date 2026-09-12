@@ -32,9 +32,13 @@ group	paper-visuals	配图与展示	插图、示意图、海报、幻灯片与�
 group	submission	投稿与基金	返修 rebuttal、重投 pipeline、基金申请书
 group	patent	专利	发明构建、权利要求、实施例到各国格式的专利流水线
 group	meta-utils	元工具与杂项	skill 语料自优化、通知、面试准备等
-skill	research	ideation	-	Zotero-first topic/proposal research and branch synthesis
-skill	write	paper-core	-	Evidence-gated proposal and paper writing
-skill	audit	review-loop	-	Independent Anti-Autoresearch audit of frozen artifacts
+skill	research	ideation	-	Legacy router to the topic/proposal autoresearch entries
+skill	write	paper-core	-	Legacy router to the evidence-gated research-write entry
+skill	audit	review-loop	-	Legacy router to the research-audit entry
+skill	autoresearch-topic	ideation	-	Topic-driven Zotero autoresearch and branch synthesis
+skill	autoresearch-proposal	ideation	-	Proposal-draft decomposition into Zotero autoresearch branches
+skill	research-write	paper-core	-	Evidence-gated proposal and paper writing entry
+skill	research-audit	review-loop	-	Branch evidence and frozen-artifact Anti audit entry
 skill	arxiv	lit-search	-	arXiv 搜索/下载/入库
 skill	alphaxiv	lit-search	-	单篇论文快速解读(AlphaXiv 摘要)
 skill	deepxiv	lit-search	-	DeepXiv 渐进式论文阅读
@@ -103,7 +107,7 @@ skill	paper-talk	paper-visuals	paper-slides,slides-polish	演讲稿+幻灯一体
 skill	slides-polish	paper-visuals	-	幻灯片打磨
 skill	rebuttal	submission	render-html	W4:审稿意见解析与安全回复
 skill	resubmit-pipeline	submission	auto-paper-improvement-loop,proof-checker,paper-claim-audit,citation-audit,kill-argument,paper-compile,integrity-forensics	被拒后重投全流程
-skill	grant-proposal	submission	research,write	基金申请书(NSFC/NSF/科研費等)
+skill	grant-proposal	submission	autoresearch-proposal,research-write	基金申请书(NSFC/NSF/科研費等)
 skill	patent-pipeline	patent	prior-art-search,patent-novelty-check,invention-structuring,claims-drafting,specification-writing,patent-review,jurisdiction-format	专利撰写全流程
 skill	invention-structuring	patent	-	粗 idea 结构化成发明披露
 skill	claims-drafting	patent	-	撰写权利要求书

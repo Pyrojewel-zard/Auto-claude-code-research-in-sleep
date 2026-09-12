@@ -14,7 +14,7 @@ def read(relative: str) -> str:
 
 
 def test_codex_audit_uses_isolated_reviewer_and_locked_upstream():
-    text = read("skills/skills-codex/audit/SKILL.md")
+    text = read("skills/skills-codex/research-audit/SKILL.md")
     for token in (
         "resolve_anti_autoresearch.py",
         "fresh isolated Codex reviewer",
@@ -23,6 +23,13 @@ def test_codex_audit_uses_isolated_reviewer_and_locked_upstream():
     ):
         assert token in text
     assert "mcp__codex__codex-reply" not in text
+
+
+def test_legacy_codex_audit_entry_is_only_a_router():
+    text = read("skills/skills-codex/audit/SKILL.md").lower()
+    assert "compatibility router" in text
+    assert "/research-audit" in text
+    assert "anti-autoresearch" in text
 
 
 def test_same_family_is_not_same_context():
@@ -39,4 +46,3 @@ def test_same_context_is_explicitly_fail_closed():
         )
         == "same-context"
     )
-

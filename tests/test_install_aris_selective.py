@@ -28,15 +28,16 @@ CODEX_INSTALLER = REPO_ROOT / "tools" / "install_aris_codex.sh"
 
 PROFILE_NAME = "pyrojewel-research"
 PROFILE_CATALOG = """\
-pyrojewel-research\tresearch,write,audit\tCodex-first Zotero research, writing, and Anti audit
+pyrojewel-research\tautoresearch-topic,autoresearch-proposal,research-write,research-audit\tCodex-first Zotero topic/proposal autoresearch, writing, and Anti audit
 """
 PROFILE_SKILL_CATALOG = """\
 group\tideation\tIdeation\tresearch workflows
 group\tpaper-core\tPaper core\tevidence-gated writing
 group\treview-loop\tReview loop\tindependent audits
-skill\tresearch\tideation\t-\tresearch
-skill\twrite\tpaper-core\t-\twrite
-skill\taudit\treview-loop\t-\taudit
+skill\tautoresearch-topic\tideation\t-\ttopic autoresearch
+skill\tautoresearch-proposal\tideation\t-\tproposal autoresearch
+skill\tresearch-write\tpaper-core\t-\tresearch write
+skill\tresearch-audit\treview-loop\t-\tresearch audit
 """
 
 CATALOG = """\
@@ -256,7 +257,12 @@ class CodexProfileInstallTest(unittest.TestCase):
         (self.repo / "tools").mkdir(parents=True)
         (self.repo / "tools" / "skill-groups.tsv").write_text(PROFILE_SKILL_CATALOG)
         (self.repo / "tools" / "skill-profiles.tsv").write_text(PROFILE_CATALOG)
-        for name in ("research", "write", "audit"):
+        for name in (
+            "autoresearch-topic",
+            "autoresearch-proposal",
+            "research-write",
+            "research-audit",
+        ):
             self._add_skill(name)
         (self.repo / "skills" / "skills-codex" / "shared-references").mkdir(parents=True)
         (self.repo / "skills" / "shared-references").mkdir(parents=True)
@@ -320,13 +326,24 @@ class CodexProfileInstallTest(unittest.TestCase):
             return set()
         return {path.name for path in root.iterdir() if path.name != "shared-references"}
 
-    def test_pyrojewel_profile_selects_only_three_public_entries(self):
+    def test_pyrojewel_profile_selects_only_four_public_entries(self):
         self._run("--profile", PROFILE_NAME)
-        self.assertEqual(self._installed(), {"research", "write", "audit"})
+        self.assertEqual(
+            self._installed(),
+            {
+                "autoresearch-topic",
+                "autoresearch-proposal",
+                "research-write",
+                "research-audit",
+            },
+        )
 
     def test_profile_exclude_prunes_selected_entry(self):
-        self._run("--profile", PROFILE_NAME, "--exclude", "write")
-        self.assertEqual(self._installed(), {"research", "audit"})
+        self._run("--profile", PROFILE_NAME, "--exclude", "research-write")
+        self.assertEqual(
+            self._installed(),
+            {"autoresearch-topic", "autoresearch-proposal", "research-audit"},
+        )
 
     def test_profile_dry_run_writes_nothing(self):
         self._run("--profile", PROFILE_NAME, "--dry-run")
@@ -372,15 +389,39 @@ class CodexProfileInstallTest(unittest.TestCase):
         self._run("--profile", PROFILE_NAME)
         self._add_skill("legacy")
         self._run("--profile", PROFILE_NAME, "--reconcile")
-        self.assertEqual(self._installed(), {"research", "write", "audit"})
+        self.assertEqual(
+            self._installed(),
+            {
+                "autoresearch-topic",
+                "autoresearch-proposal",
+                "research-write",
+                "research-audit",
+            },
+        )
 
     def test_generic_installer_delegates_profile_to_codex(self):
         self._run_generic("codex", "--profile", PROFILE_NAME)
-        self.assertEqual(self._installed("codex"), {"research", "write", "audit"})
+        self.assertEqual(
+            self._installed("codex"),
+            {
+                "autoresearch-topic",
+                "autoresearch-proposal",
+                "research-write",
+                "research-audit",
+            },
+        )
 
     def test_generic_installer_uses_profile_for_claude_flat_install(self):
         self._run_generic("claude", "--profile", PROFILE_NAME)
-        self.assertEqual(self._installed("claude"), {"research", "write", "audit"})
+        self.assertEqual(
+            self._installed("claude"),
+            {
+                "autoresearch-topic",
+                "autoresearch-proposal",
+                "research-write",
+                "research-audit",
+            },
+        )
 
     def test_profile_options_are_present_in_shell_help_and_syntax_is_valid(self):
         for script in (CODEX_INSTALLER, INSTALL_SCRIPT):

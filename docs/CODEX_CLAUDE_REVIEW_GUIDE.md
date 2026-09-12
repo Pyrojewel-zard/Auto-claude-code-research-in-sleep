@@ -3,7 +3,8 @@
 The reduced ARIS workflow is Codex-primary:
 
 ```text
-/research -> /write -> /audit
+/autoresearch-topic    -> /research-audit -> /research-write
+/autoresearch-proposal -> /research-audit -> /research-write
 ```
 
 The active Codex context owns orchestration and writing. Review is a separate,
@@ -16,17 +17,20 @@ authoring context never supplies its own Anti-Autoresearch verdict.
 bash tools/install_aris_codex.sh /path/to/project --profile pyrojewel-research
 ```
 
-This installs `research`, `write`, and `audit`; it does not select broad search,
+This installs exactly `autoresearch-topic`, `autoresearch-proposal`,
+`research-write`, and `research-audit`; it does not select broad search,
 experiment, or legacy paper-pipeline skills. The old catalog and optional
 Claude/Gemini overlays remain available for unrelated workflows, but are not
 part of the profile.
 
 ## Review boundary
 
-`/research` uses Zotero semantic search as its automatic literature source and
-runs a lightweight branch audit after a complete branch. `/write` accepts only
-`PROMOTABLE` or `PROMOTABLE_WITH_OBLIGATIONS` evidence. `/audit` freezes the
-final source/results package, resolves the Anti engine from
+`/autoresearch-topic` is for a topic; `/autoresearch-proposal` is for an
+existing application/proposal draft. Both use Zotero semantic search as their
+automatic literature source and complete each branch before invoking
+`/research-audit`. `/research-write` accepts only `PROMOTABLE` or
+`PROMOTABLE_WITH_OBLIGATIONS` evidence. `/research-audit` can run a branch
+evidence audit or freeze the final source/results package and resolve the Anti engine from
 `vendor/anti-autoresearch/` and `tools/anti-autoresearch.lock.json`, runs the
 vendored eval, and folds the report through `tools/forensics_gate.py`.
 
@@ -40,3 +44,6 @@ If a separate Claude reviewer is required by a venue or local policy, use the
 existing `skills-codex-claude-review` overlay as an explicit add-on and record
 its provenance. It is not needed for the default ARIS profile and must not be
 used to bypass the frozen-artifact gate.
+
+Upstream changes are reviewed as candidates, not silently added to the reduced
+surface. See [`UPSTREAM_FLOW_REVIEW.md`](UPSTREAM_FLOW_REVIEW.md).

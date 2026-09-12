@@ -6,10 +6,10 @@ description: "Compatibility entry for topic-mode literature research."
 # Legacy `research-lit` compatibility wrapper
 
 This entry is retained for callers that still invoke `/research-lit`. It is a
-topic-mode compatibility wrapper around the canonical Codex workflow in
-`skills/skills-codex/research/SKILL.md`; it does not own a second retrieval
-pipeline. Forward the topic and any supported output paths to `/research` in
-topic mode and let the canonical entry own classification, Zotero retrieval,
+topic-mode compatibility wrapper around `/autoresearch-topic` at
+`skills/skills-codex/autoresearch-topic/SKILL.md`; it does not own a second
+retrieval pipeline. Forward the topic and any supported output paths to
+`/autoresearch-topic` and let that canonical entry own Zotero retrieval,
 coverage, audit, and synthesis.
 
 ## Compatibility handoff

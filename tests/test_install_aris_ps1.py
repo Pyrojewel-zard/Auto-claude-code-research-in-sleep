@@ -99,20 +99,26 @@ def make_minimal_repo(root: Path) -> Path:
 def make_profile_repo(root: Path) -> Path:
     repo = make_minimal_repo(root)
     for package in ("", "skills-codex"):
-        for name in ("research", "write", "audit"):
+        for name in (
+            "autoresearch-topic",
+            "autoresearch-proposal",
+            "research-write",
+            "research-audit",
+        ):
             make_skill(repo / "skills" / package / name, f"# {name}\n")
     (repo / "tools" / "skill-groups.tsv").write_text(
         "group\tideation\tIdeation\tresearch workflows\n"
         "group\tpaper-core\tPaper core\tevidence-gated writing\n"
         "group\treview-loop\tReview loop\tindependent audits\n"
-        "skill\tresearch\tideation\t-\tresearch\n"
-        "skill\twrite\tpaper-core\t-\twrite\n"
-        "skill\taudit\treview-loop\t-\taudit\n",
+        "skill\tautoresearch-topic\tideation\t-\ttopic autoresearch\n"
+        "skill\tautoresearch-proposal\tideation\t-\tproposal autoresearch\n"
+        "skill\tresearch-write\tpaper-core\t-\tresearch write\n"
+        "skill\tresearch-audit\treview-loop\t-\tresearch audit\n",
         encoding="utf-8",
     )
     (repo / "tools" / "skill-profiles.tsv").write_text(
-        "pyrojewel-research\tresearch,write,audit\t"
-        "Codex-first Zotero research, writing, and Anti audit\n",
+        "pyrojewel-research\tautoresearch-topic,autoresearch-proposal,research-write,research-audit\t"
+        "Codex-first Zotero topic/proposal autoresearch, writing, and Anti audit\n",
         encoding="utf-8",
     )
     return repo
@@ -403,7 +409,12 @@ def test_install_aris_ps1_profile_selects_only_public_entries(tmp_path: Path) ->
         for path in (project / ".agents" / "skills").iterdir()
         if path.name != "shared-references"
     }
-    assert installed == {"research", "write", "audit"}
+    assert installed == {
+        "autoresearch-topic",
+        "autoresearch-proposal",
+        "research-write",
+        "research-audit",
+    }
 
 
 def test_install_aris_ps1_profile_supports_exclude_dry_run_and_conflicts(tmp_path: Path) -> None:
@@ -421,7 +432,7 @@ def test_install_aris_ps1_profile_supports_exclude_dry_run_and_conflicts(tmp_pat
             "-Profile",
             "pyrojewel-research",
             "-Exclude",
-            "write",
+            "research-write",
         ]
     )
     installed = {
@@ -429,7 +440,11 @@ def test_install_aris_ps1_profile_supports_exclude_dry_run_and_conflicts(tmp_pat
         for path in (project / ".agents" / "skills").iterdir()
         if path.name != "shared-references"
     }
-    assert installed == {"research", "audit"}
+    assert installed == {
+        "autoresearch-topic",
+        "autoresearch-proposal",
+        "research-audit",
+    }
 
     conflict = run_ps(
         [

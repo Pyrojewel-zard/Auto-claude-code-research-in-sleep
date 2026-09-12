@@ -1,5 +1,11 @@
 # ARIS Zotero-First Research Profile Implementation Plan
 
+> **Superseded:** The original three-entry design in this execution record was
+> corrected on 2026-09-12. The active implementation plan is
+> [`2026-09-12-four-entry-aris-simplification.md`](2026-09-12-four-entry-aris-simplification.md),
+> which restores four independent public entries: `autoresearch-topic`,
+> `autoresearch-proposal`, `research-write`, and `research-audit`.
+
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (- [ ]) syntax for tracking.
 
 **Goal:** Build a Codex-first ARIS profile with research, write, and audit entries, Zotero-first retrieval, branch promotion gates, and an ARIS-owned Anti-Autoresearch audit engine.

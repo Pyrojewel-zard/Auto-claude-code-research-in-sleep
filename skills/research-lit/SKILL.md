@@ -6,8 +6,8 @@ description: "Compatibility entry for topic-mode literature research."
 # Legacy `research-lit` compatibility wrapper
 
 `/research-lit` is preserved as a topic-mode compatibility wrapper. Forward
-the request to the canonical Codex research entry at
-`skills/skills-codex/research/SKILL.md` using topic mode. The canonical entry
+the request to `/autoresearch-topic`; its canonical Codex contract is at
+`skills/skills-codex/autoresearch-topic/SKILL.md`. The canonical entry
 is the only owner of the Zotero-first workflow; this wrapper must not restore
 the former broad-source defaults.
 

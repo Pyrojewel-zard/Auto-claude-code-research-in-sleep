@@ -122,11 +122,19 @@ class CatalogTest(unittest.TestCase):
                     "stale edge or wrong dependency",
                 )
 
-    def test_pyrojewel_profile_references_three_public_entries_without_requires(self):
+    def test_pyrojewel_profile_references_four_public_entries_without_requires(self):
         profiles = parse_profiles()
         self.assertIn("pyrojewel-research", profiles)
         selected = profiles["pyrojewel-research"][0].split(",")
-        self.assertEqual(selected, ["research", "write", "audit"])
+        self.assertEqual(
+            selected,
+            [
+                "autoresearch-topic",
+                "autoresearch-proposal",
+                "research-write",
+                "research-audit",
+            ],
+        )
         for name in selected:
             self.assertIn(name, self.skills)
             self.assertEqual(self.skills[name][1], "-")

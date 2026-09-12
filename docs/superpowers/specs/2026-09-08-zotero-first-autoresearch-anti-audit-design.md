@@ -2,8 +2,11 @@
 
 ## Status
 
-Design approved in principle. Implementation planning begins only after the
-user approves this written specification.
+Design approved. Revision 2026-09-12 restores the four independent public
+entry skills from the original subtraction design:
+`autoresearch-topic`, `autoresearch-proposal`, `research-write`, and
+`research-audit`. The earlier three-entry consolidation was implementation
+drift and is superseded by this revision.
 
 ## Problem
 
@@ -16,9 +19,10 @@ loop from certifying its own evidence and conclusions.
 
 ## Goals
 
-1. Expose only research, write, and audit by default.
-2. Support topic-driven research and proposal-draft decomposition through one
-   research orchestrator.
+1. Expose only four focused entries by default: topic autoresearch, proposal
+   autoresearch, research writing, and research audit.
+2. Keep topic-driven research and proposal-draft decomposition as two separate
+   public entry skills while sharing their internal branch/state machinery.
 3. Make Zotero semantic search the only automatic literature-discovery path.
 4. Ask once before targeted external expansion unless the run was explicitly
    configured to allow or forbid it.
@@ -45,17 +49,21 @@ loop from certifying its own evidence and conclusions.
 
 ## Product Surface
 
-The default profile exposes:
+The default profile exposes four independent entries:
 
-- research: topic or proposal input to branch research and synthesis;
-- write: promoted evidence to proposal or paper;
-- audit: frozen artifacts to full Anti-Autoresearch forensics.
+- `autoresearch-topic`: a topic/question/method to branch research and
+  synthesis;
+- `autoresearch-proposal`: an existing application draft to claim/gap
+  decomposition and independently auditable branches;
+- `research-write`: promoted evidence to proposal or paper;
+- `research-audit`: completed research branches or frozen artifacts to the
+  lightweight/full Anti-Autoresearch audit boundary.
 
-Topic and proposal inputs are two modes of one research entry.
-
-Topic mode turns a theme and constraints into a research brief and independent
-branches. Proposal mode extracts claims and gaps from a draft before generating
-branches. Write consumes only promoted evidence. Audit handles frozen PDFs,
+The two autoresearch entries share internal state, Zotero retrieval, evidence,
+and promotion helpers, but their input contracts remain separate. Topic entry
+does not infer an application draft; proposal entry must read and analyze the
+provided draft before creating branches. Write consumes only promoted evidence.
+Audit handles both the completed-branch evidence checkpoint and frozen PDFs,
 source directories, code, results, or combined artifact directories.
 
 ## State and Workspace
@@ -218,9 +226,9 @@ reduced default profile.
 
 ## Writing and Final Audit
 
-Write consumes the research brief, promoted evidence matrices, synthesis, and
-obligations. Proposal mode preserves future-work language. Paper mode separates
-observed results from proposed or inferred claims.
+`/research-write` consumes the research brief, promoted evidence matrices,
+synthesis, and obligations. Proposal mode preserves future-work language.
+Paper mode separates observed results from proposed or inferred claims.
 
 Before finalization:
 
@@ -228,19 +236,34 @@ Before finalization:
 - unverified evidence is qualified or removed from load-bearing claims;
 - hard obligations block finalization;
 - soft obligations remain explicit but may proceed;
-- a frozen submission artifact invokes full audit once.
+- a frozen submission artifact invokes `/research-audit` once for full audit.
 
 ## Packaging and Deferred Deletion
 
-The minimal profile installs the three public entries and internal
+The minimal profile installs exactly the four public entries and internal
 tools/contracts. It does not install broad search skills, autonomous experiment
 loops, patents, presentation flows, reviewer overlays, or the legacy
-paper-writing assurance closure.
+paper-writing assurance closure. The old catalog remains available only as
+explicit legacy/compatibility surface during validation.
 
 The full catalog remains available during validation and cannot be a dependency
 of the reduced profile. Physical deletion requires passing end-to-end fixtures,
 stable audit obligations, real-use confirmation, and a separate path-level
 deletion proposal.
+
+## Upstream Flow Review
+
+An upstream update is not merged wholesale. After fetching an upstream ref into
+an isolated review area, ARIS enumerates new or changed workflow skills and
+classifies each candidate as `MERGE`, `ADAPT`, `OPTIONAL`, or `REJECT`.
+
+The review checks entry overlap, Zotero/source-policy compliance, Codex
+compatibility, Anti/audit independence, dependency fan-out, maintenance cost,
+and focused regression coverage. A useful upstream flow is merged into one of
+the four canonical entries or added behind an explicit optional profile;
+upstream-only behavior is never allowed to silently expand the default profile.
+The review record and tested commit are retained as provenance before any
+candidate is adopted.
 
 ## Error Handling
 
@@ -274,14 +297,16 @@ before accepting a pin. Live Web access is never required by default.
 1. Add the lightweight evidence-audit contract and fixtures to the Anti source.
 2. Import the tested Anti release into the ARIS vendor tree and record
    provenance; no separate Anti push is required.
-3. Refactor research around topic and proposal modes.
+3. Split research into the independent topic and proposal entries while sharing
+   the branch engine.
 4. Replace broad retrieval with Zotero-first query and coverage contracts.
 5. Add branch audit, promotion, and obligations.
 6. Refactor writing to consume promoted evidence.
 7. Add the full vendored Anti adapter and frozen-artifact checkpoint.
-8. Add the minimal Codex-first profile and installer tests.
-9. Update documentation and run end-to-end fixtures.
-10. Validate real use before proposing physical deletion.
+8. Add the minimal Codex-first four-entry profile and installer tests.
+9. Add the upstream flow review policy/tool and tests.
+10. Update documentation and run end-to-end fixtures.
+11. Validate real use before proposing physical deletion.
 
 ## Acceptance Criteria
 
@@ -294,6 +319,10 @@ before accepting a pin. Live Web access is never required by default.
 - Full audit uses the tested ARIS-vendored Anti snapshot with recorded upstream
   provenance.
 - Reviewer context is isolated from authoring context.
-- The default installation exposes three public entries.
+- The default installation exposes exactly four public entries:
+  `autoresearch-topic`, `autoresearch-proposal`, `research-write`, and
+  `research-audit`.
 - Legacy workflows are outside the minimal dependency closure.
 - No separate Anti repository is required at runtime or for ARIS delivery.
+- Upstream workflow changes are reviewed and classified before selective
+  adoption; no upstream update silently expands the default profile.

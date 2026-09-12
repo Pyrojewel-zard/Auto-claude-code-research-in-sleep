@@ -31,7 +31,7 @@ def test_mainline_large_payload_skills_prefer_path_only_codex_prompts() -> None:
             "Read the re-evaluation bundle at <absolute path",
         ],
         "grant-proposal": [
-            "skills/skills-codex/research/SKILL.md",
+            "skills/skills-codex/autoresearch-proposal/SKILL.md",
             "DRAFT_ANALYSIS.md",
             "EVIDENCE_MATRIX.md",
         ],

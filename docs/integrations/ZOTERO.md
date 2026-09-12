@@ -1,14 +1,16 @@
 # Zotero integration
 
-ARIS's reduced flow is Zotero-first:
+ARIS's reduced flow is Zotero-first, with four independent public entries:
 
 ```text
-/research -> Zotero semantic search -> evidence matrix -> /write -> /audit
+/autoresearch-topic or /autoresearch-proposal
+  -> Zotero semantic search -> complete branch autoresearch
+  -> /research-audit -> promoted synthesis -> /research-write
 ```
 
 The automatic scholarly retrieval operation is
 `mcp__zotero_mcp__semantic_search`. For every query in a branch's
-`QUERY_PACK.md`, `/research` makes one semantic call, optionally retries once
+`QUERY_PACK.md`, the selected autoresearch entry makes one semantic call, optionally retries once
 with a declared alias, then records a terminal status. It can use Zotero item
 details, full-text content, and annotations to verify the matched passage.
 
@@ -46,6 +48,10 @@ once about only the named gaps. `never` preserves them; `allow` requires an
 explicit targeted policy. Neither policy changes the automatic Zotero
 contract.
 
-See [`skills/skills-codex/research/SKILL.md`](../../skills/skills-codex/research/SKILL.md)
-for the full topic/proposal workflow and [`ZOTERO_CN.md`](ZOTERO_CN.md) for
+See [`skills/skills-codex/autoresearch-topic/SKILL.md`](../../skills/skills-codex/autoresearch-topic/SKILL.md)
+and [`skills/skills-codex/autoresearch-proposal/SKILL.md`](../../skills/skills-codex/autoresearch-proposal/SKILL.md)
+for the topic/proposal workflows, plus
+[`skills/skills-codex/research-audit/SKILL.md`](../../skills/skills-codex/research-audit/SKILL.md)
+and [`skills/skills-codex/research-write/SKILL.md`](../../skills/skills-codex/research-write/SKILL.md)
+for the audit and writing handoffs. See [`ZOTERO_CN.md`](ZOTERO_CN.md) for
 the Chinese version.

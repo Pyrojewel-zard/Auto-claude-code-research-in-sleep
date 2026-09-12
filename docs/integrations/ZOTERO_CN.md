@@ -1,12 +1,14 @@
 # Zotero 集成
 
-精简后的 ARIS 流程以 Zotero 为唯一自动文献发现入口：
+精简后的 ARIS 流程以 Zotero 为唯一自动文献发现入口，并保留四个独立公共入口：
 
 ```text
-/research -> Zotero semantic search -> evidence matrix -> /write -> /audit
+/autoresearch-topic 或 /autoresearch-proposal
+  -> Zotero semantic search -> 完成分支 autoresearch
+  -> /research-audit -> 晋级证据综合 -> /research-write
 ```
 
-`/research` 为每个分支 `QUERY_PACK.md` 中的 query 调用一次
+选定的 autoresearch 入口为每个分支 `QUERY_PACK.md` 中的 query 调用一次
 `mcp__zotero_mcp__semantic_search`；结果为空时最多用声明过的别名重试一次，
 随后必须记录终态。对去重后的命中，可继续读取 Zotero item details、全文
 content、annotations/highlights 来核验具体段落。
@@ -41,5 +43,9 @@ WebSearch、arXiv、Semantic Scholar、OpenAlex、Exa、Gemini 或其他文献�
 gap 询问一次；`never` 保留 gap，`allow` 只允许预先授权的定向扩展。两者都不
 改变 Zotero 的自动检索契约。
 
-完整的 topic/proposal 流程见
-[`skills/skills-codex/research/SKILL.md`](../../skills/skills-codex/research/SKILL.md)。
+topic/proposal 的完整流程见
+[`skills/skills-codex/autoresearch-topic/SKILL.md`](../../skills/skills-codex/autoresearch-topic/SKILL.md)
+和 [`skills/skills-codex/autoresearch-proposal/SKILL.md`](../../skills/skills-codex/autoresearch-proposal/SKILL.md)，
+审计与写作交接见
+[`skills/skills-codex/research-audit/SKILL.md`](../../skills/skills-codex/research-audit/SKILL.md)
+和 [`skills/skills-codex/research-write/SKILL.md`](../../skills/skills-codex/research-write/SKILL.md)。

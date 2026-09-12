@@ -24,7 +24,7 @@ complete workflows but records `review_independence: same-family` and
 verifiers may record accepted; never describe base Codex self-review as
 cross-model acceptance.
 
-**Full catalog**: [`docs/SKILLS_CATALOG.md`](docs/SKILLS_CATALOG.md) — **85 skills**, grouped by role. For the reduced Zotero-first path, install the `pyrojewel-research` profile and use `/research` → `/write` → `/audit`.
+**Full catalog**: [`docs/SKILLS_CATALOG.md`](docs/SKILLS_CATALOG.md) — **89 skills**, grouped by role. For the reduced Zotero-first path, install the `pyrojewel-research` profile and use `/autoresearch-topic` or `/autoresearch-proposal` → `/research-audit` → `/research-write`.
 
 Invocation syntax is identical across hosts:
 ```
