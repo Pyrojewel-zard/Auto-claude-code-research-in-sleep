@@ -72,7 +72,34 @@ def test_provenance_labeling_is_honest_per_executor():
         _, g = _gate(d, "CLEAN_GIVEN_EVIDENCE", executor="claude-opus-4-8")
         assert g["proposal_provenance"] == "cross-family"
         _, g = _gate(d, "CLEAN_GIVEN_EVIDENCE", executor="codex-gpt-6-astra")
-        assert g["proposal_provenance"] == "same-family"
+        assert g["proposal_provenance"] == "same-family-isolated"
+
+
+def test_same_context_review_fails_closed():
+    with tempfile.TemporaryDirectory() as d:
+        report = _report(
+            os.path.join(d, "report.json"), "CLEAN_GIVEN_EVIDENCE", []
+        )
+        rc = fg.main(
+            [
+                "evaluate",
+                "--report",
+                report,
+                "--paper-dir",
+                d,
+                "--anti-ar-commit",
+                "d8f510c",
+                "--executor-model",
+                "codex",
+                "--reviewer-model",
+                "codex",
+                "--same-context",
+            ]
+        )
+        gate = json.load(open(os.path.join(d, ".aris", "forensics", "gate.json")))
+        assert rc == 1
+        assert gate["proposal_provenance"] == "same-context"
+        assert gate["policy_decision"] == "BLOCK"
 
 
 def test_obligations_append_only_and_disappearance_never_closes():

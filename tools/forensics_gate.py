@@ -84,6 +84,29 @@ def _executor_family(name):
     return next(iter(hits)) if len(hits) == 1 else "unknown"
 
 
+def classify_review_provenance(executor, reviewer, isolated):
+    """Classify the reviewer relationship without granting acceptance.
+
+    A fresh reviewer in the same model family is still useful for completeness
+    and adversarial pressure, but it is not a cross-family verdict.  A reviewer
+    sharing the active context is not independent at all and is therefore a
+    fail-closed provenance state for the full audit entry.
+    """
+    if isolated is not True:
+        return "same-context"
+    executor_family = _executor_family(executor)
+    reviewer_family = _executor_family(reviewer)
+    if (
+        executor_family != "unknown"
+        and reviewer_family != "unknown"
+        and executor_family != reviewer_family
+    ):
+        return "cross-family"
+    if executor_family == reviewer_family and executor_family != "unknown":
+        return "same-family-isolated"
+    return "unknown-isolated"
+
+
 def _severity(f):
     return f.get("_severity_final") or f.get("severity") or "info"
 
@@ -480,8 +503,14 @@ def cmd_gate(args):
     path = os.path.join(_forensics_dir(args.paper_dir), "obligations.json")
     ledger = _load_ledger(path)
     decision, open_obl, open_critical, weird, unbound = _decide(verdict, ledger, report_sha)
+    provenance = classify_review_provenance(
+        executor=args.executor_model,
+        reviewer=args.reviewer_model,
+        isolated=not args.same_context,
+    )
+    if provenance == "same-context":
+        decision = BLOCK
 
-    exec_family = _executor_family(args.executor_model)
     claims = os.path.join(args.paper_dir, "claims.json")
     # Which dimensions never ran. The upstream verdict folds incompleteness in only
     # when it would otherwise be CLEAN, so a SOFT_FLAGS sweep can silently be a
@@ -513,14 +542,12 @@ def cmd_gate(args):
         "unavailable_dimensions": unavailable_dims,
         "open_obligations": len(open_obl),
         "open_critical_obligations": len(open_critical),
-        # honest provenance: the sweep's auditors are GPT-family. For a Claude
-        # executor that is cross-family PROPOSAL provenance; for a Codex executor
-        # it is same-family. Either way this gate only raises flags — it records
-        # provenance, it does not (cannot) grant acceptance.
+        # Honest provenance: a fresh same-family reviewer is explicitly not a
+        # cross-family verdict. Same-context review is recorded and blocked.
         "executor_model": args.executor_model,
-        "proposal_provenance": ("cross-family" if exec_family not in (AUDITOR_FAMILY, "unknown")
-                                else ("same-family" if exec_family == AUDITOR_FAMILY
-                                      else "unknown")),
+        "reviewer_model": args.reviewer_model,
+        "review_isolated": not args.same_context,
+        "proposal_provenance": provenance,
     }
     out = os.path.join(_forensics_dir(args.paper_dir), "gate.json")
     fd, tmp = tempfile.mkstemp(dir=os.path.dirname(out), suffix=".tmp")
@@ -550,6 +577,10 @@ def cmd_fresh(args):
     if gate.get("gate_version") != GATE_VERSION:
         print(f"forensics fresh: VERSION_MISMATCH — gate is v{gate.get('gate_version')!r}, "
               f"tool is v{GATE_VERSION}; re-run `evaluate`")
+        return 1
+    if gate.get("proposal_provenance") == "same-context":
+        print("forensics fresh: SAME_CONTEXT — reviewer was not isolated; re-run "
+              "the audit with a fresh reviewer context")
         return 1
     if args.anti_ar_commit and gate.get("anti_ar_commit") != args.anti_ar_commit:
         print(f"forensics fresh: PIN_MISMATCH — gate was produced at pin "
@@ -611,6 +642,10 @@ def main(argv=None):
                    help="the SHA-pin the launcher ran (provenance)")
     g.add_argument("--executor-model", default="claude",
                    help="the pipeline's executor, for honest provenance labeling")
+    g.add_argument("--reviewer-model", default="codex",
+                   help="the isolated reviewer, for honest provenance labeling")
+    g.add_argument("--same-context", action="store_true",
+                   help="mark a non-independent review; the gate will BLOCK")
 
     u = sub.add_parser("update", help="fold a report's findings into the append-only ledger")
     u.add_argument("--report", required=True)
@@ -621,6 +656,9 @@ def main(argv=None):
     e.add_argument("--paper-dir", required=True)
     e.add_argument("--anti-ar-commit", required=True)
     e.add_argument("--executor-model", default="claude")
+    e.add_argument("--reviewer-model", default="codex")
+    e.add_argument("--same-context", action="store_true",
+                   help="mark a non-independent review; the gate will BLOCK")
 
     r = sub.add_parser("resolve", help="close ONE obligation with typed, hashed evidence")
     r.add_argument("--paper-dir", required=True)
