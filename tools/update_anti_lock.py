@@ -9,12 +9,26 @@ import re
 import subprocess
 import sys
 from pathlib import Path
+from pathlib import PurePosixPath
 
 
 COMMIT_RE = re.compile(r"[0-9a-f]{40}")
-WORKFLOW_PATH = Path("workflows/evidence-audit/SKILL.md")
-EVAL_PATH = Path("eval/run_eval.py")
+VENDOR_PATH = "vendor/anti-autoresearch"
+REQUIRED_ANTI_PATHS = (
+    Path("workflows/anti-autoresearch/SKILL.md"),
+    Path("workflows/evidence-audit/SKILL.md"),
+    Path("eval/run_eval.py"),
+    Path("tools/adjudicate_findings.py"),
+    Path("tools/build_claim_ledger.py"),
+    Path("tools/check_evidence_coverage.py"),
+    Path("schemas/artifact_manifest.schema.json"),
+    Path("schemas/claims.schema.json"),
+    Path("schemas/finding.schema.json"),
+    Path("schemas/query_coverage.schema.json"),
+    Path("schemas/report.schema.json"),
+)
 CONTRACT_SCHEMA_PATH = Path("schemas/query_coverage.schema.json")
+EVAL_PATH = Path("eval/run_eval.py")
 
 
 def _require_text(value: str, field: str) -> str:
@@ -28,6 +42,18 @@ def _validate_commit(commit: str) -> str:
     if COMMIT_RE.fullmatch(commit) is None:
         raise ValueError("commit must be an exact 40-character lowercase SHA-1")
     return commit
+
+
+def _validate_vendor_path(vendor_path: str) -> str:
+    vendor_path = _require_text(vendor_path, "vendor_path")
+    if "\\" in vendor_path:
+        raise ValueError("vendor_path must use POSIX separators")
+    parsed = PurePosixPath(vendor_path)
+    if parsed.is_absolute() or ".." in parsed.parts or "." in parsed.parts:
+        raise ValueError("vendor_path must be a relative path without dot segments")
+    if str(parsed) != VENDOR_PATH:
+        raise ValueError(f"vendor_path must be {VENDOR_PATH}")
+    return str(parsed)
 
 
 def _git(checkout: Path, *args: str) -> str:
@@ -58,6 +84,16 @@ def _contract_version(checkout: Path) -> str:
     return _require_text(version, "Anti contract version")
 
 
+def _assert_required_paths(checkout: Path) -> None:
+    missing = [
+        str(relative_path)
+        for relative_path in REQUIRED_ANTI_PATHS
+        if not (checkout / relative_path).is_file()
+    ]
+    if missing:
+        raise ValueError("missing Anti required file(s): " + ", ".join(missing))
+
+
 def _assert_clean(checkout: Path) -> None:
     status = _git(checkout, "status", "--porcelain=v1", "--untracked-files=all")
     if status:
@@ -76,13 +112,7 @@ def validate_checkout(checkout: Path, expected_contract_version: str) -> str:
 
     _assert_clean(checkout)
     commit = _validate_commit(_git(checkout, "rev-parse", "HEAD"))
-
-    for relative_path, label in (
-        (WORKFLOW_PATH, "workflow"),
-        (EVAL_PATH, "eval harness"),
-    ):
-        if not (checkout / relative_path).is_file():
-            raise ValueError(f"missing Anti {label}: {relative_path}")
+    _assert_required_paths(checkout)
 
     detected_contract_version = _contract_version(checkout)
     if detected_contract_version != expected_contract_version:
@@ -113,19 +143,25 @@ def validate_checkout(checkout: Path, expected_contract_version: str) -> str:
 
 
 def update_lock(
-    lock_path: Path, repo_url: str, commit: str, contract_version: str
+    lock_path: Path,
+    repo_url: str,
+    commit: str,
+    contract_version: str,
+    vendor_path: str = VENDOR_PATH,
 ) -> None:
     """Write one validated Anti-Autoresearch lock entry."""
 
     repo_url = _require_text(repo_url, "repo_url")
     commit = _validate_commit(commit)
     contract_version = _require_text(contract_version, "contract_version")
+    vendor_path = _validate_vendor_path(vendor_path)
     lock_path = Path(lock_path)
     lock_path.parent.mkdir(parents=True, exist_ok=True)
     payload = {
         "repo_url": repo_url,
         "commit": commit,
         "contract_version": contract_version,
+        "vendor_path": vendor_path,
     }
     lock_path.write_text(
         json.dumps(payload, ensure_ascii=False, indent=2) + "\n", encoding="utf-8"
@@ -139,6 +175,7 @@ def _parse_args(argv: list[str]) -> argparse.Namespace:
     parser.add_argument("--repo-url", required=True)
     parser.add_argument("--checkout", required=True, type=Path)
     parser.add_argument("--contract-version", required=True)
+    parser.add_argument("--vendor-path", default=VENDOR_PATH)
     parser.add_argument("--out", required=True, type=Path)
     return parser.parse_args(argv)
 
@@ -147,7 +184,13 @@ def main(argv: list[str] | None = None) -> int:
     args = _parse_args(sys.argv[1:] if argv is None else argv)
     try:
         commit = validate_checkout(args.checkout, args.contract_version)
-        update_lock(args.out, args.repo_url, commit, args.contract_version)
+        update_lock(
+            args.out,
+            args.repo_url,
+            commit,
+            args.contract_version,
+            args.vendor_path,
+        )
     except (OSError, ValueError) as exc:
         print(f"update failed: {exc}", file=sys.stderr)
         return 1

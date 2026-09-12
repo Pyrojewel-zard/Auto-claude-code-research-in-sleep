@@ -1,0 +1,79 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://github.com/wanshuiyin/Anti-Autoresearch/schemas/query_coverage.schema.json",
+  "title": "Research Query Coverage",
+  "description": "The auditable coverage record for research-evidence queries. It records declared query outcomes and provenance; it does not perform retrieval or decide a report verdict.",
+  "type": "object",
+  "required": ["schema_version", "branch_id", "source_policy", "queries", "artifact_hashes"],
+  "properties": {
+    "schema_version": {
+      "type": "string",
+      "const": "0.1",
+      "description": "Version of the query_coverage.json contract."
+    },
+    "branch_id": {
+      "type": "string",
+      "description": "Stable identifier for the ARIS research branch whose evidence coverage is recorded."
+    },
+    "source_policy": {
+      "description": "The declared provenance policy for this coverage record. Anti records the policy but performs no retrieval.",
+      "oneOf": [
+        {"type": "string"},
+        {"type": "object"}
+      ]
+    },
+    "counter_query_run": {
+      "type": "boolean",
+      "description": "Whether the branch recorded an opposing counter-query run; optional for legacy coverage records."
+    },
+    "queries": {
+      "type": "array",
+      "description": "One entry for each research-evidence query considered by the branch.",
+      "items": {
+        "type": "object",
+        "required": ["query_id", "status", "evidence_directions", "source", "evidence_item_keys"],
+        "properties": {
+          "query_id": {
+            "type": "string",
+            "description": "Stable identifier used by claims.query_ids."
+          },
+          "query": {
+            "type": "string",
+            "description": "The recorded query text, when one exists."
+          },
+          "status": {
+            "type": "string",
+            "enum": ["SEARCHED", "NO_HIT", "UNVERIFIED", "UNSEARCHABLE", "ERROR"],
+            "description": "Terminal state of the query record."
+          },
+          "evidence_directions": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": ["supports", "contradicts", "limits", "unclear"]
+            },
+            "description": "How the recorded evidence bears on the claim or question."
+          },
+          "source": {
+            "type": "string",
+            "description": "Declared source or provenance label for the query result."
+          },
+          "evidence_item_keys": {
+            "type": "array",
+            "items": {"type": "string"},
+            "description": "Stable keys for evidence items associated with this query."
+          },
+          "notes": {
+            "type": "string",
+            "description": "Optional bounded explanation of the query outcome."
+          }
+        }
+      }
+    },
+    "artifact_hashes": {
+      "type": "object",
+      "additionalProperties": {"type": "string"},
+      "description": "Mapping from recorded artifact keys or paths to their content hashes."
+    }
+  }
+}

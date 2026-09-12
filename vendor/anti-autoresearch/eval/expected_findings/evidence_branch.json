@@ -1,0 +1,15 @@
+{
+  "fixture": "fixtures/evidence_branch",
+  "corruption": null,
+  "required_patterns": [
+    "HP-EVIDENCE-UNSUPPORTED",
+    "HP-EVIDENCE-NO-COUNTERSEARCH"
+  ],
+  "required_severities": {
+    "HP-EVIDENCE-UNSUPPORTED": "critical",
+    "HP-EVIDENCE-NO-COUNTERSEARCH": "minor"
+  },
+  "forbidden_above_info": false,
+  "expected_verdict": "HARD_FLAGS",
+  "note": "The load-bearing claim linked to a preserved NO_HIT query must raise a critical HARD_FLAGS finding, while the missing counter-query remains a minor soft finding."
+}

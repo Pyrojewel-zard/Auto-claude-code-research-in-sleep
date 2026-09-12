@@ -1,0 +1,29 @@
+{
+  "schema_version": "0.1",
+  "branch_id": "evidence-branch",
+  "source_policy": "zotero",
+  "counter_query_run": false,
+  "queries": [
+    {
+      "query_id": "Q-SUPPORT",
+      "query": "proposed mechanism robustness target task",
+      "status": "SEARCHED",
+      "evidence_directions": ["supports"],
+      "source": "zotero",
+      "evidence_item_keys": ["Z-SUPPORT"],
+      "notes": "A claim-bearing source span was recorded for the supported claim."
+    },
+    {
+      "query_id": "Q-NO-HIT",
+      "query": "mechanism generalizes across all scientific domains",
+      "status": "NO_HIT",
+      "evidence_directions": ["supports"],
+      "source": "zotero",
+      "evidence_item_keys": [],
+      "notes": "The search returned no supporting evidence item; NO_HIT is preserved."
+    }
+  ],
+  "artifact_hashes": {
+    "Z-SUPPORT": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+  }
+}

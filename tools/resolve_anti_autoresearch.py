@@ -7,16 +7,29 @@ import argparse
 import json
 import os
 import re
-import shutil
 import subprocess
 import sys
 from dataclasses import asdict, dataclass
 from pathlib import Path
+from pathlib import PurePosixPath
 
 
 COMMIT_RE = re.compile(r"[0-9a-f]{40}")
+VENDOR_PATH = "vendor/anti-autoresearch"
+REQUIRED_ANTI_PATHS = (
+    Path("workflows/anti-autoresearch/SKILL.md"),
+    Path("workflows/evidence-audit/SKILL.md"),
+    Path("eval/run_eval.py"),
+    Path("tools/adjudicate_findings.py"),
+    Path("tools/build_claim_ledger.py"),
+    Path("tools/check_evidence_coverage.py"),
+    Path("schemas/artifact_manifest.schema.json"),
+    Path("schemas/claims.schema.json"),
+    Path("schemas/finding.schema.json"),
+    Path("schemas/query_coverage.schema.json"),
+    Path("schemas/report.schema.json"),
+)
 CONTRACT_SCHEMA_PATH = Path("schemas/query_coverage.schema.json")
-CACHE_NAMESPACE = "anti-autoresearch"
 DEFAULT_LOCK_PATH = Path(__file__).resolve().with_name("anti-autoresearch.lock.json")
 
 
@@ -46,6 +59,18 @@ def _validate_commit(commit: str) -> str:
     return commit
 
 
+def _validate_vendor_path(vendor_path: str) -> str:
+    vendor_path = _require_text(vendor_path, "vendor_path")
+    if "\\" in vendor_path:
+        raise ValueError("vendor_path must use POSIX separators")
+    parsed = PurePosixPath(vendor_path)
+    if parsed.is_absolute() or ".." in parsed.parts or "." in parsed.parts:
+        raise ValueError("vendor_path must be a relative path without dot segments")
+    if str(parsed) != VENDOR_PATH:
+        raise ValueError(f"vendor_path must be {VENDOR_PATH}")
+    return str(parsed)
+
+
 def _load_lock(lock_path: Path) -> dict[str, str]:
     try:
         payload = json.loads(Path(lock_path).read_text(encoding="utf-8"))
@@ -53,7 +78,7 @@ def _load_lock(lock_path: Path) -> dict[str, str]:
         raise ValueError(f"cannot read Anti lock: {lock_path}") from exc
     if not isinstance(payload, dict):
         raise ValueError("Anti lock must contain a JSON object")
-    missing = {"repo_url", "commit", "contract_version"} - payload.keys()
+    missing = {"repo_url", "commit", "contract_version", "vendor_path"} - payload.keys()
     if missing:
         raise ValueError(f"Anti lock is missing fields: {', '.join(sorted(missing))}")
     return {
@@ -62,6 +87,7 @@ def _load_lock(lock_path: Path) -> dict[str, str]:
         "contract_version": _require_text(
             payload["contract_version"], "contract_version"
         ),
+        "vendor_path": _validate_vendor_path(payload["vendor_path"]),
     }
 
 
@@ -93,7 +119,17 @@ def _head(repo: Path) -> str:
 def _assert_clean(repo: Path) -> None:
     status = _git(repo, "status", "--porcelain=v1", "--untracked-files=all")
     if status:
-        raise ValueError(f"pinned Anti cache is dirty: {repo}")
+        raise ValueError(f"Anti checkout is dirty: {repo}")
+
+
+def _assert_required_paths(repo: Path) -> None:
+    missing = [
+        str(relative_path)
+        for relative_path in REQUIRED_ANTI_PATHS
+        if not (repo / relative_path).is_file()
+    ]
+    if missing:
+        raise ValueError("missing Anti required file(s): " + ", ".join(missing))
 
 
 def _contract_version(repo: Path) -> str:
@@ -120,6 +156,35 @@ def _verify_contract(repo: Path, expected: str) -> str:
     return detected
 
 
+def _project_root(lock_path: Path) -> Path:
+    lock_path = Path(lock_path).expanduser().resolve()
+    if lock_path.parent.name == "tools":
+        return lock_path.parent.parent
+    return lock_path.parent
+
+
+def _vendored_path(lock_path: Path, vendor_path: str) -> Path:
+    root = _project_root(lock_path)
+    relative = PurePosixPath(_validate_vendor_path(vendor_path))
+    candidate = (root / Path(*relative.parts)).resolve()
+    try:
+        candidate.relative_to(root.resolve())
+    except ValueError as exc:
+        raise ValueError("Anti vendor path escapes the ARIS checkout") from exc
+    return candidate
+
+
+def _assert_vendored_tree(repo: Path) -> None:
+    if not repo.is_dir():
+        raise ValueError(f"vendored Anti tree does not exist: {repo}")
+    nested_metadata = [
+        path for path in repo.rglob(".git") if path.name == ".git"
+    ]
+    if nested_metadata:
+        raise ValueError("vendored Anti tree contains nested .git metadata")
+    _assert_required_paths(repo)
+
+
 def _local_override(local_repo: Path | None) -> Path | None:
     if local_repo is not None:
         return Path(local_repo).expanduser().resolve()
@@ -132,72 +197,29 @@ def _local_override(local_repo: Path | None) -> Path | None:
 def _resolve_local(
     repo: Path, expected_contract_version: str
 ) -> Resolution:
+    _assert_clean(repo)
     commit = _head(repo)
+    _assert_required_paths(repo)
     contract_version = _verify_contract(repo, expected_contract_version)
+    _assert_clean(repo)
     return Resolution(repo, commit, "local", contract_version)
-
-
-def _clone_pinned(repo_url: str, commit: str, cache_root: Path) -> Path:
-    cache_root = Path(cache_root).expanduser().resolve()
-    cache_path = cache_root / CACHE_NAMESPACE / commit
-    cache_path.parent.mkdir(parents=True, exist_ok=True)
-
-    if not cache_path.exists():
-        try:
-            subprocess.run(
-                ["git", "clone", "--no-tags", repo_url, str(cache_path)],
-                check=True,
-                capture_output=True,
-                text=True,
-            )
-        except (OSError, subprocess.CalledProcessError) as exc:
-            if cache_path.exists():
-                shutil.rmtree(cache_path)
-            detail = getattr(exc, "stderr", "") or str(exc)
-            raise ValueError(f"could not clone pinned Anti repository: {detail.strip()}") from exc
-    elif not cache_path.is_dir():
-        raise ValueError(f"pinned Anti cache path is not a directory: {cache_path}")
-
-    # Reject an existing dirty cache before fetch/checkout can alter it.  The
-    # final check below closes the path before a dirty checkout is returned.
-    _assert_clean(cache_path)
-
-    # A commit-addressed path is never accepted merely because it exists.  The
-    # object must be present and HEAD must be detached at the lock's exact SHA.
-    object_check = _git(
-        cache_path, "rev-parse", "--verify", f"{commit}^{{commit}}", check=False
-    )
-    if not object_check:
-        try:
-            _git(cache_path, "fetch", "--no-tags", "origin", commit)
-        except ValueError as exc:
-            raise ValueError(
-                f"pinned Anti commit {commit} is unavailable in cache {cache_path}"
-            ) from exc
-    _git(cache_path, "checkout", "--detach", commit)
-    actual = _head(cache_path)
-    if actual != commit:
-        raise ValueError(
-            f"pinned Anti checkout is at {actual}, expected locked commit {commit}"
-        )
-    _assert_clean(cache_path)
-    return cache_path
 
 
 def resolve_anti(
     lock_path: Path, local_repo: Path | None, cache_root: Path
 ) -> Resolution:
-    """Resolve an Anti checkout, honoring local development overrides first."""
+    """Resolve the vendored Anti tree, with an explicit local override."""
 
     lock = _load_lock(Path(lock_path))
     local = _local_override(local_repo)
     if local is not None:
         return _resolve_local(local, lock["contract_version"])
 
-    cache_path = _clone_pinned(lock["repo_url"], lock["commit"], Path(cache_root))
-    contract_version = _verify_contract(cache_path, lock["contract_version"])
-    _assert_clean(cache_path)
-    return Resolution(cache_path, lock["commit"], "pinned", contract_version)
+    del cache_root  # retained in the API for callers of the former resolver
+    vendor_path = _vendored_path(Path(lock_path), lock["vendor_path"])
+    _assert_vendored_tree(vendor_path)
+    contract_version = _verify_contract(vendor_path, lock["contract_version"])
+    return Resolution(vendor_path, lock["commit"], "vendored", contract_version)
 
 
 def _parse_args(argv: list[str]) -> argparse.Namespace:
@@ -210,6 +232,7 @@ def _parse_args(argv: list[str]) -> argparse.Namespace:
         "--cache-root",
         type=Path,
         default=Path.home() / ".cache" / "aris",
+        help="deprecated compatibility option; ignored for vendored resolution",
     )
     parser.add_argument("--json", action="store_true", dest="as_json")
     return parser.parse_args(argv)

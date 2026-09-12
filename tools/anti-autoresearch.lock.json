@@ -1,5 +1,6 @@
 {
   "repo_url": "git@github.com:wanshuiyin/Anti-Autoresearch.git",
   "commit": "78fdac2580ac8005cafe9b543a78458e30f19c01",
-  "contract_version": "0.1"
+  "contract_version": "0.1",
+  "vendor_path": "vendor/anti-autoresearch"
 }

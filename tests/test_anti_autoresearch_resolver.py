@@ -1,5 +1,6 @@
 import json
 import os
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -19,6 +20,7 @@ REPO_URL = "git@github.com:wanshuiyin/Anti-Autoresearch.git"
 LOCKED_SHA = "0123456789abcdef0123456789abcdef01234567"
 COMMITTED_LOCK_PATH = TOOLS / "anti-autoresearch.lock.json"
 COMMITTED_LOCKED_SHA = "78fdac2580ac8005cafe9b543a78458e30f19c01"
+VENDOR_PATH = "vendor/anti-autoresearch"
 
 
 def _run(*args, cwd=None):
@@ -45,13 +47,30 @@ def _write_checkout(repo, *, contract_version="0.1", with_workflow=True, eval_co
         ),
         encoding="utf-8",
     )
+    for relative in (
+        "artifact_manifest.schema.json",
+        "claims.schema.json",
+        "finding.schema.json",
+        "report.schema.json",
+    ):
+        (repo / "schemas" / relative).write_text("{}\n", encoding="utf-8")
     (repo / "eval" / "run_eval.py").write_text(
         f"#!/usr/bin/env python3\n{eval_code}\n", encoding="utf-8"
     )
+    for relative in (
+        "adjudicate_findings.py",
+        "build_claim_ledger.py",
+        "check_evidence_coverage.py",
+    ):
+        (repo / "tools" / relative).parent.mkdir(parents=True, exist_ok=True)
+        (repo / "tools" / relative).write_text("# fixture\n", encoding="utf-8")
     if with_workflow:
-        workflow = repo / "workflows" / "evidence-audit"
-        workflow.mkdir(parents=True)
-        (workflow / "SKILL.md").write_text("# evidence audit\n", encoding="utf-8")
+        for workflow_name in ("evidence-audit", "anti-autoresearch"):
+            workflow = repo / "workflows" / workflow_name
+            workflow.mkdir(parents=True)
+            (workflow / "SKILL.md").write_text(
+                f"# {workflow_name}\n", encoding="utf-8"
+            )
     _git(repo, "init", "-q")
     _git(repo, "config", "user.email", "tests@example.invalid")
     _git(repo, "config", "user.name", "resolver tests")
@@ -60,13 +79,21 @@ def _write_checkout(repo, *, contract_version="0.1", with_workflow=True, eval_co
     return _git(repo, "rev-parse", "HEAD").stdout.strip()
 
 
-def _write_lock(path, *, repo_url=REPO_URL, commit=LOCKED_SHA, contract_version="0.1"):
+def _write_lock(
+    path,
+    *,
+    repo_url=REPO_URL,
+    commit=LOCKED_SHA,
+    contract_version="0.1",
+    vendor_path=VENDOR_PATH,
+):
     path.write_text(
         json.dumps(
             {
                 "repo_url": repo_url,
                 "commit": commit,
                 "contract_version": contract_version,
+                "vendor_path": vendor_path,
             }
         ),
         encoding="utf-8",
@@ -107,6 +134,7 @@ def test_update_lock_writes_url_commit_and_contract(tmp_path):
         "repo_url": REPO_URL,
         "commit": LOCKED_SHA,
         "contract_version": "0.1",
+        "vendor_path": VENDOR_PATH,
     }
 
 
@@ -115,6 +143,7 @@ def test_committed_lock_preserves_exact_tested_pin():
         "repo_url": REPO_URL,
         "commit": COMMITTED_LOCKED_SHA,
         "contract_version": "0.1",
+        "vendor_path": VENDOR_PATH,
     }
 
 
@@ -251,56 +280,26 @@ def test_resolver_json_cli_exposes_structured_resolution(tmp_path):
     }
 
 
-def test_distribution_resolution_is_commit_pinned(tmp_path, monkeypatch):
-    source_repo = tmp_path / "source"
-    commit = _write_checkout(source_repo)
+def test_default_resolution_uses_the_aris_vendor_tree(monkeypatch):
+    monkeypatch.delenv("ARIS_ANTI_REPO", raising=False)
+
+    result = resolve_anti(COMMITTED_LOCK_PATH, None, ROOT / ".unused-cache")
+
+    assert result.source_kind == "vendored"
+    assert result.commit == COMMITTED_LOCKED_SHA
+    assert result.repo_path == (ROOT / VENDOR_PATH).resolve()
+    assert result.contract_version == "0.1"
+
+
+def test_default_resolution_does_not_use_repo_url_or_cache(tmp_path, monkeypatch):
     lock_path = tmp_path / "lock.json"
-    _write_lock(lock_path, repo_url=str(source_repo), commit=commit)
+    vendor = tmp_path / VENDOR_PATH
+    shutil.copytree(ROOT / VENDOR_PATH, vendor)
+    _write_lock(lock_path, repo_url="this-is-provenance-only", commit=COMMITTED_LOCKED_SHA)
     monkeypatch.delenv("ARIS_ANTI_REPO", raising=False)
 
     result = resolve_anti(lock_path, None, tmp_path / "cache")
 
-    assert result.source_kind == "pinned"
-    assert result.commit == commit
-    assert result.repo_path.is_relative_to((tmp_path / "cache").resolve())
-    assert result.repo_path.name == commit
-
-
-def test_distribution_resolution_rejects_untracked_cache_tampering(
-    tmp_path, monkeypatch
-):
-    source_repo = tmp_path / "source"
-    commit = _write_checkout(source_repo)
-    lock_path = tmp_path / "lock.json"
-    cache_root = tmp_path / "cache"
-    _write_lock(lock_path, repo_url=str(source_repo), commit=commit)
-    monkeypatch.delenv("ARIS_ANTI_REPO", raising=False)
-
-    result = resolve_anti(lock_path, None, cache_root)
-    (result.repo_path / "untracked.txt").write_text("tampered\n", encoding="utf-8")
-
-    with pytest.raises(ValueError, match="dirty"):
-        resolve_anti(lock_path, None, cache_root)
-    assert (
-        (result.repo_path / "untracked.txt").read_text(encoding="utf-8")
-        == "tampered\n"
-    )
-
-
-def test_distribution_resolution_rejects_tracked_cache_tampering(
-    tmp_path, monkeypatch
-):
-    source_repo = tmp_path / "source"
-    commit = _write_checkout(source_repo)
-    lock_path = tmp_path / "lock.json"
-    cache_root = tmp_path / "cache"
-    _write_lock(lock_path, repo_url=str(source_repo), commit=commit)
-    monkeypatch.delenv("ARIS_ANTI_REPO", raising=False)
-
-    result = resolve_anti(lock_path, None, cache_root)
-    schema_path = result.repo_path / "schemas" / "query_coverage.schema.json"
-    schema_path.write_text('{"tampered": true}\n', encoding="utf-8")
-
-    with pytest.raises(ValueError, match="dirty"):
-        resolve_anti(lock_path, None, cache_root)
-    assert schema_path.read_text(encoding="utf-8") == '{"tampered": true}\n'
+    assert result.source_kind == "vendored"
+    assert result.repo_path == vendor.resolve()
+    assert not (tmp_path / "cache").exists()
