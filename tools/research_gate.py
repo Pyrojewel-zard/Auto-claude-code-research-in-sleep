@@ -77,8 +77,6 @@ def _finding_identity_parts(finding: Mapping[str, Any]) -> dict[str, Any]:
 
     claims: list[Any] = []
     spans: list[Any] = []
-    if finding.get("claim_id") is not None:
-        claims.append(finding.get("claim_id"))
     for key in ("claim", "claim_text", "claim_span"):
         if finding.get(key) is not None:
             claims.append(finding.get(key))
@@ -89,7 +87,7 @@ def _finding_identity_parts(finding: Mapping[str, Any]) -> dict[str, Any]:
     for item in evidence_items:
         if not isinstance(item, Mapping):
             continue
-        for key in ("claim_id", "claim", "claim_text"):
+        for key in ("claim", "claim_text"):
             if item.get(key) is not None:
                 claims.append(item.get(key))
                 break
@@ -135,9 +133,15 @@ def obligation_fingerprint(
 fingerprint = obligation_fingerprint
 
 
-def _eligible_finding(finding: Mapping[str, Any]) -> bool:
+def _verdict_weight(finding: Mapping[str, Any]) -> int:
     weight = finding.get("_verdict_weight", 1)
-    if weight == 0:
+    if type(weight) is not int or weight not in {0, 1}:
+        raise InvalidState("finding _verdict_weight must be int 0 or 1")
+    return weight
+
+
+def _eligible_finding(finding: Mapping[str, Any]) -> bool:
+    if _verdict_weight(finding) != 1:
         return False
     severity = finding.get("_severity_final", finding.get("severity"))
     return severity != "info"
@@ -301,6 +305,13 @@ def _report_verdict(report: Mapping[str, Any]) -> str:
     findings = report.get("findings", [])
     if findings is not None and not isinstance(findings, list):
         raise InvalidReport("Anti report findings must be a list")
+    for index, finding in enumerate(findings or []):
+        if not isinstance(finding, Mapping):
+            raise InvalidReport(f"finding[{index}] must be an object")
+        try:
+            _verdict_weight(finding)
+        except InvalidState as exc:
+            raise InvalidReport(str(exc)) from exc
     return verdict
 
 

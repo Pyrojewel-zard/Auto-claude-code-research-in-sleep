@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import hashlib
 import json
-from collections.abc import Mapping
+from collections.abc import Mapping, MutableMapping
 from typing import Any
 
 
@@ -142,6 +142,47 @@ def validate_query_statuses(
                 "all queries must have terminal statuses before branch research completes"
             )
     return records
+
+
+def _set_unique_query_status(branch: dict[str, Any], status: str) -> None:
+    """Update the one real query record used by a terminal query event."""
+
+    for key in ("queries", "query_results", "query_statuses"):
+        if key not in branch:
+            continue
+        raw = branch[key]
+        if isinstance(raw, Mapping):
+            if len(raw) != 1:
+                raise InvalidTransition(
+                    "terminal query events require exactly one query record"
+                )
+            query_id, item = next(iter(raw.items()))
+            if isinstance(item, MutableMapping):
+                item["status"] = status
+            elif isinstance(raw, MutableMapping):
+                raw[query_id] = status
+            else:
+                raise InvalidState(f"{key} must be mutable")
+            return
+        if isinstance(raw, list):
+            if len(raw) != 1:
+                raise InvalidTransition(
+                    "terminal query events require exactly one query record"
+                )
+            item = raw[0]
+            if isinstance(item, MutableMapping):
+                item["status"] = status
+            elif isinstance(item, str):
+                raw[0] = status
+            else:
+                raise InvalidState(f"{key}[0] must be an object or status string")
+            return
+        raise InvalidState(f"{key} must be a list or object")
+
+    if "query_status" in branch:
+        branch["query_status"] = status
+        return
+    raise InvalidTransition("terminal query event requires a real query record")
 
 
 def _policy_from(
@@ -334,36 +375,47 @@ def validate_audit_hashes(
 ) -> None:
     """Reject audit metadata that is missing or differs from branch inputs.
 
-    Hash metadata is optional for the tiny state fixtures used by the first
-    contract.  Once a state records input hashes, however, every audit binding
-    supplied by the branch or report must match them; a missing binding fails
-    closed rather than silently accepting a stale audit.
+    Hash metadata is optional only when neither side declares it.  Once either
+    the state or report carries artifact hashes, the other side must carry a
+    matching binding; a missing binding fails closed rather than silently
+    accepting an unbound audit.
     """
 
     branch = _get_branch(state, branch_id)
     expected = _expected_artifact_hashes(state, branch, branch_id)
     branch_audit = _audit_artifact_hashes(branch)
-    if expected is not None and (
-        isinstance(branch.get("audit"), Mapping) or branch_audit is not None
-    ):
-        _assert_hash_match(expected, branch_audit, "branch audit")
-    if report is not None:
-        report_hashes = _report_artifact_hashes(report)
+    if report is None:
         if expected is not None:
-            _assert_hash_match(expected, report_hashes, "audit report")
-        if branch_audit is not None and report_hashes is not None:
+            _assert_hash_match(expected, branch_audit, "branch audit")
+        return
+
+    report_hashes = _report_artifact_hashes(report)
+    if expected is not None:
+        if isinstance(branch.get("audit"), Mapping) or branch_audit is not None:
+            _assert_hash_match(expected, branch_audit, "branch audit")
+        _assert_hash_match(expected, report_hashes, "audit report")
+    elif report_hashes is not None and branch_audit is None:
+        raise StaleAudit(
+            "audit report artifact hashes are not bound to state artifact hashes"
+        )
+
+    if branch_audit is not None:
+        if report_hashes is None:
+            raise StaleAudit("audit report is not bound to branch audit hashes")
+        if expected is None:
             _assert_hash_match(branch_audit, report_hashes, "audit report")
-        # A state may carry both a named artifact-hash map and a compact
-        # single-artifact hash.  Validate each explicit binding instead of
-        # allowing the first representation to hide a mismatch in the other.
-        for key in ("artifact_hash", "research_hash"):
-            if key in branch and key in report:
-                _assert_hash_match(branch[key], report[key], f"audit report {key}")
-        audit = branch.get("audit")
-        if isinstance(audit, Mapping):
-            for key in ("artifact_hash", "input_hash", "audit_hash"):
-                if key in audit and key in report:
-                    _assert_hash_match(audit[key], report[key], f"audit report {key}")
+
+    # A state may carry both a named artifact-hash map and a compact
+    # single-artifact hash.  Validate each explicit binding instead of
+    # allowing the first representation to hide a mismatch in the other.
+    for key in ("artifact_hash", "research_hash"):
+        if key in branch and key in report:
+            _assert_hash_match(branch[key], report[key], f"audit report {key}")
+    audit = branch.get("audit")
+    if isinstance(audit, Mapping):
+        for key in ("artifact_hash", "input_hash", "audit_hash"):
+            if key in audit and key in report:
+                _assert_hash_match(audit[key], report[key], f"audit report {key}")
 
 
 def _coverage_gaps(branch: Mapping[str, Any]) -> list[Any]:
@@ -430,7 +482,9 @@ def _expand_decisions(
     ]
 
 
-def coverage_decision(branch: dict) -> list[dict]:
+def coverage_decision(
+    branch: dict, *, state: Mapping[str, Any] | None = None
+) -> list[dict]:
     """Return the policy decision for the gaps in one completed coverage report.
 
     ``ask`` emits one prompt for a coverage-report hash and records that prompt
@@ -442,24 +496,37 @@ def coverage_decision(branch: dict) -> list[dict]:
     if not isinstance(branch, dict):
         raise InvalidState("branch must be an object")
     status = branch.get("status")
-    if status is not None and status not in {
-        "BRANCH_RESEARCHED",
-        "EVIDENCE_AUDITED",
-        *PROMOTION_STATES,
-    }:
+    if status in {"EVIDENCE_AUDITED", *PROMOTION_STATES}:
+        raise InvalidTransition(
+            f"coverage decision cannot mutate a frozen branch in {status!r}"
+        )
+    if status is not None and status != "BRANCH_RESEARCHED":
         raise InvalidTransition(
             f"coverage decision requires a completed branch, got {status!r}"
         )
     if branch.get("coverage_report_complete") is False:
         raise InvalidTransition("coverage decision requires a completed coverage report")
 
-    policy = _policy_from(None, branch)
+    if state is not None and not isinstance(state, Mapping):
+        raise InvalidState("state must be an object")
+    policy = _policy_from(state, branch)
     gaps = _coverage_gaps(branch)
     if not gaps:
         return []
     coverage_hash = _coverage_hash(branch, gaps)
 
     prior_decision = branch.get("external_expansion_decision")
+    if policy == "never":
+        branch["coverage_gaps_preserved"] = True
+        return [
+            {
+                "action": "PRESERVE_GAPS",
+                "gaps": list(gaps),
+                "policy": policy,
+                "external_call": False,
+                "coverage_report_hash": coverage_hash,
+            }
+        ]
     if prior_decision in {"declined", "never", "preserve"}:
         return [
             {
@@ -481,17 +548,6 @@ def coverage_decision(branch: dict) -> list[dict]:
             }
         ]
 
-    if policy == "never":
-        branch["coverage_gaps_preserved"] = True
-        return [
-            {
-                "action": "PRESERVE_GAPS",
-                "gaps": list(gaps),
-                "policy": policy,
-                "external_call": False,
-                "coverage_report_hash": coverage_hash,
-            }
-        ]
     if policy == "allow":
         return [
             {
@@ -506,10 +562,12 @@ def coverage_decision(branch: dict) -> list[dict]:
     prompted_for = branch.get(
         "coverage_prompted_report_hash", branch.get("expansion_prompted_for")
     )
-    if prompted_for == coverage_hash or (
-        branch.get("expansion_prompted") is True and prompted_for is None
-    ):
+    if prompted_for == coverage_hash:
         return []
+    if branch.get("expansion_prompted") is True and prompted_for is None:
+        raise InvalidTransition(
+            "ask expansion prompt is not bound to a coverage report hash"
+        )
 
     branch["coverage_prompted_report_hash"] = coverage_hash
     branch["expansion_prompted_for"] = coverage_hash
@@ -589,6 +647,13 @@ def _record_expansion_event(
     state: dict, event: str, branch_id: str | None
 ) -> dict:
     branch = _get_branch(state, branch_id) if branch_id is not None else None
+    if branch is not None and branch.get("status") in {
+        "EVIDENCE_AUDITED",
+        *PROMOTION_STATES,
+    }:
+        raise InvalidTransition(
+            f"branch {branch_id!r} is frozen; expansion state cannot change"
+        )
     policy = _policy_from(state, branch)
     holder = branch if branch is not None else state
     if event in {"EXPANSION_PROMPTED", "EXTERNAL_EXPANSION_PROMPTED"}:
@@ -636,7 +701,7 @@ def _transition_branch(state: dict, event: str, branch_id: str) -> dict:
     current = branch.get("status", "INPUT")
 
     if event == "BRANCH_PLANNED":
-        if current not in {"INPUT", "BRANCH_PLANNED"}:
+        if current != "INPUT":
             raise InvalidTransition(
                 f"branch {branch_id!r} is {current!r}; cannot plan it"
             )
@@ -644,8 +709,6 @@ def _transition_branch(state: dict, event: str, branch_id: str) -> dict:
         return state
 
     if event == "ZOTERO_RESEARCHING":
-        if current == event:
-            return state
         if current != "BRANCH_PLANNED":
             raise InvalidTransition(
                 f"branch {branch_id!r} is {current!r}; expected BRANCH_PLANNED"
@@ -664,43 +727,27 @@ def _transition_branch(state: dict, event: str, branch_id: str) -> dict:
         return state
 
     if event == "COVERAGE_COMPLETE":
-        if current not in {
-            "BRANCH_RESEARCHED",
-            "EVIDENCE_AUDITED",
-            *PROMOTION_STATES,
-        }:
+        if current != "BRANCH_RESEARCHED":
             raise InvalidTransition(
                 f"coverage completion requires a researched branch, got {current!r}"
             )
         # Coverage is a report-level checkpoint, not a branch-status change.
         # Calling it repeatedly is intentionally idempotent for one report;
         # coverage_decision records the report hash and asks at most once.
-        coverage_decision(branch)
+        coverage_decision(branch, state=state)
         branch["coverage_complete"] = True
         return state
 
     if event in QUERY_TERMINAL:
-        # A terminal event is a compact one-query update.  Multi-query callers
-        # should write the query record first and use BRANCH_RESEARCHED; this
-        # guard avoids pretending that one event completed every query.
-        records = _query_records(branch)
-        if len(records) > 1:
+        if current != "ZOTERO_RESEARCHING":
             raise InvalidTransition(
-                "terminal query events are only unambiguous for one query; "
-                "record each query and transition BRANCH_RESEARCHED"
+                f"terminal query events require ZOTERO_RESEARCHING, got {current!r}"
             )
-        if "queries" in branch and isinstance(branch["queries"], list) and branch["queries"]:
-            if not isinstance(branch["queries"][0], dict):
-                raise InvalidState("queries[0] must be an object")
-            branch["queries"][0]["status"] = event
-        else:
-            branch["query_status"] = event
+        _set_unique_query_status(branch, event)
         validate_query_statuses(branch)
         return state
 
     if event == "BRANCH_RESEARCHED":
-        if current == event:
-            return state
         if current != "ZOTERO_RESEARCHING":
             raise InvalidTransition(
                 f"branch {branch_id!r} is {current!r}; expected ZOTERO_RESEARCHING"
@@ -724,8 +771,6 @@ def _transition_branch(state: dict, event: str, branch_id: str) -> dict:
         return state
 
     if event in PROMOTION_STATES:
-        if current == event:
-            return state
         if current != "EVIDENCE_AUDITED":
             raise InvalidTransition(
                 f"promotion requires EVIDENCE_AUDITED, got {current!r} for {branch_id!r}"
