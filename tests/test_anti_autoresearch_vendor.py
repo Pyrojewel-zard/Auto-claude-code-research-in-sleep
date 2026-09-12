@@ -14,6 +14,7 @@ REQUIRED = (
     "workflows/anti-autoresearch/SKILL.md",
     "workflows/evidence-audit/SKILL.md",
     "eval/run_eval.py",
+    "eval/fixtures/evidence_branch/claims.json",
     "tools/adjudicate_findings.py",
     "tools/build_claim_ledger.py",
     "tools/check_evidence_coverage.py",

@@ -1,0 +1,50 @@
+{
+  "ledger_version": "0.1",
+  "paper_id": "evidence-branch",
+  "observability_level": 1,
+  "generated_at": "2026-01-01T00:00:00Z",
+  "source_files": [
+    {
+      "path": "EVIDENCE_MATRIX.md",
+      "sha256": "1111111111111111111111111111111111111111111111111111111111111111",
+      "kind": "text"
+    }
+  ],
+  "claims": [
+    {
+      "claim_id": "C001",
+      "type": "research_claim",
+      "text_span": "The proposed mechanism improves robustness on the target task.",
+      "query_ids": ["Q-SUPPORT"],
+      "evidence_direction": "supports",
+      "verification_status": "VERIFIED",
+      "load_bearing": true,
+      "support_basis": "quoted_span",
+      "location": {
+        "file": "EVIDENCE_MATRIX.md",
+        "line": 12,
+        "section": "results"
+      },
+      "evidence_anchor": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "extractor": "manual",
+      "confidence": "high"
+    },
+    {
+      "claim_id": "C002",
+      "type": "research_claim",
+      "text_span": "The proposed mechanism generalizes across all scientific domains.",
+      "query_ids": ["Q-NO-HIT"],
+      "evidence_direction": "supports",
+      "load_bearing": true,
+      "support_basis": "none",
+      "location": {
+        "file": "EVIDENCE_MATRIX.md",
+        "line": 18,
+        "section": "conclusion"
+      },
+      "evidence_anchor": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "extractor": "manual",
+      "confidence": "high"
+    }
+  ]
+}

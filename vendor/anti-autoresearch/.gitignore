@@ -19,3 +19,7 @@ __pycache__/
 
 # os / editor
 .DS_Store
+
+# The deterministic eval fixture is required by eval/run_eval.py and is part
+# of the vendored release, despite the generic runtime-output ignore above.
+!eval/fixtures/evidence_branch/claims.json
